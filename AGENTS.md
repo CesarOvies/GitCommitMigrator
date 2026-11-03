@@ -12,7 +12,7 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 - **RuntimeIdentifier**: `win-x64` (`PublishSingleFile: true`, `SelfContained: true`, `PublishReadyToRun: true`)
 - **AssemblyName**: `Git.Commit.Migrator`
 - **Dependência principal**: `LibGit2Sharp` (`0.31.0`)
-- **Solution**: `GitCommitMigration.slnx` (formato XML moderno do .NET)
+- **Solution**: `GitCommitMigration.slnx` (inclui `Migrator` e `Migrator.Tests`)
 - **Estilo (`.editorconfig`)**: `dotnet_style_namespace_match_folder = true` (namespaces refletem a hierarquia de pastas).
 
 ## 3. Mapa de Arquivos e Responsabilidades
@@ -24,6 +24,8 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 | `Migrator/Services/MigrationService.cs` | `Migrator.Services.MigrationService` | Contém toda a regra de negócio Git via `LibGit2Sharp`. Métodos estáticos: `RunMigration`, `ExtractCommits`, `ReconstructHistory`, `PushToRemote`. |
 | `Migrator/Models/RunMigrationRequest.cs` | `Migrator.Models.RunMigrationRequest` | DTO de entrada com os 7 parâmetros preenchidos na UI. |
 | `Migrator/Models/CommitMetadata.cs` | `Migrator.Models.CommitMetadata` | DTO representando um commit extraído (`Message` e `When`). |
+| `Migrator.Tests/Services/MigrationServiceTests.cs` | `Migrator.Tests.Services.MigrationServiceTests` | Testes automatizados (xUnit) validando extração, reconstrução de histórico e push E2E em repositório bare local. |
+| `.github/workflows/ci.yml` | `CI & PR Policy` | Workflow do GitHub Actions que valida governança de branches em PRs (`* -> develop` e `develop -> main`), roda `dotnet test` e fecha automaticamente PRs inválidos ou com testes quebrados. |
 
 ## 4. Fluxo Passo a Passo (`MigrationService.cs`)
 
@@ -45,16 +47,20 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
    - Configura `UsernamePasswordCredentials` com `Username = "PAT"` e `Password = targetPatToken`.
    - Faz push de `refs/heads/main` para `origin`.
 
-## 5. Pontos de Atenção e Comportamentos Conhecidos
+## 5. Governança de Branches e CI
 
-- **Diretório temporário (`TargetLocalTempPath`)**: `Repository.Init` e `Remotes.Add("origin", ...)` assumem que o diretório de destino ainda não possui um repositório com branch/remote conflitante. Se reutilizado na mesma pasta, `Remotes.Add("origin", ...)` lançará exceção do `LibGit2Sharp` caso `origin` já exista.
-- **Validação de entrada**: Atualmente não há validação prévia nos campos da UI antes de chamar `MigrationService.RunMigration`; erros caem no `catch (Exception ex)` de `MigratorForm.ExecuteMigrationAsync()` e exibem um `MessageBox`.
+- Toda alteração deve ser feita em `develop` (ou branches direcionadas a `develop`).
+- A `main` só recebe merge vindo de `develop`.
+- Todos os testes em `Migrator.Tests` devem passar antes de abrir/mesclar PRs.
 
 ## 6. Comandos Úteis
 
 ```powershell
 # Build
 dotnet build GitCommitMigration.slnx
+
+# Test
+dotnet test GitCommitMigration.slnx
 
 # Run
 dotnet run --project Migrator/Migrator.csproj

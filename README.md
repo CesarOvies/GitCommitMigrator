@@ -3,6 +3,7 @@
 ![.NET 8.0](https://img.shields.io/badge/.NET-8.0--windows-512BD4?logo=dotnet)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20x64-0078D6?logo=windows)
 ![LibGit2Sharp](https://img.shields.io/badge/LibGit2Sharp-0.31.0-F05032?logo=git)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Aplicação desktop Windows Forms (.NET 8) para migrar o histórico de contribuições de um repositório Git local para um novo repositório remoto usando **Ghost Commits** (commits vazios que preservam datas e mensagens originais sem expor o código-fonte).
 
@@ -52,6 +53,12 @@ flowchart LR
 dotnet run --project Migrator/Migrator.csproj
 ```
 
+### Executar Testes
+
+```powershell
+dotnet test GitCommitMigration.slnx
+```
+
 ### Gerar executável único (Self-Contained)
 
 O projeto já está configurado para publicação *single-file* independente (`win-x64`):
@@ -64,18 +71,43 @@ O binário `Git.Commit.Migrator.exe` será gerado em `Migrator/bin/Release/net8.
 
 ---
 
+## Fluxo de Branches e CI (GitHub Actions)
+
+O repositório conta com pipeline automatizado (`.github/workflows/ci.yml`) que impõe:
+1. **Regra de PR (`branch-policy`)**:
+   - Todo PR de feature/fix deve apontar para `develop`.
+   - A branch `main` aceita exclusivamente PRs originados de `develop`.
+   - PRs fora desse padrão são comentados e **fechados automaticamente**.
+2. **Qualidade e Testes (`build-and-test`)**:
+   - Compila a solução e executa a suíte `Migrator.Tests` (xUnit).
+   - Se o build ou qualquer teste falhar durante um PR, o PR recebe um aviso e é **fechado automaticamente**.
+
+---
+
 ## Estrutura do Projeto
 
 ```text
 GitCommitMigration.slnx
-└── Migrator/
-    ├── Forms/
-    │   └── MigratorForm.cs         # UI principal (Windows Forms)
-    ├── Models/
-    │   ├── CommitMetadata.cs       # Modelo dos metadados extraídos de cada commit (Message, When)
-    │   └── RunMigrationRequest.cs  # DTO com os parâmetros de entrada da migração
+├── .github/workflows/
+│   └── ci.yml                          # Pipeline CI + Governança de PRs/Branches
+├── Migrator/
+│   ├── Forms/
+│   │   └── MigratorForm.cs             # UI principal (Windows Forms)
+│   ├── Models/
+│   │   ├── CommitMetadata.cs           # Modelo dos metadados extraídos de cada commit (Message, When)
+│   │   └── RunMigrationRequest.cs      # DTO com os parâmetros de entrada da migração
+│   ├── Services/
+│   │   └── MigrationService.cs         # Motor de migração (ExtractCommits, ReconstructHistory, PushToRemote)
+│   ├── Program.cs                      # Ponto de entrada da aplicação
+│   └── Migrator.csproj                 # Configuração de build .NET 8 / LibGit2Sharp
+└── Migrator.Tests/
     ├── Services/
-    │   └── MigrationService.cs     # Motor de migração (ExtractCommits, ReconstructHistory, PushToRemote)
-    ├── Program.cs                  # Ponto de entrada da aplicação
-    └── Migrator.csproj             # Configuração de build .NET 8 / LibGit2Sharp
+    │   └── MigrationServiceTests.cs    # Testes unitários e E2E do motor de migração
+    └── Migrator.Tests.csproj           # Projeto de testes xUnit
 ```
+
+---
+
+## Licença
+
+Distribuído sob a licença **MIT**. Veja [LICENSE](LICENSE) para mais detalhes.
