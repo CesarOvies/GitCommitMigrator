@@ -133,6 +133,78 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal(originalWhen, pushedCommits[1].Author.When);
     }
 
+    [Fact]
+    public void ValidateRequest_ReturnsErrorsForEmptyOrInvalidFields()
+    {
+        RunMigrationRequest emptyRequest = new();
+        Dictionary<string, string> errors = MigrationService.ValidateRequest(emptyRequest);
+
+        Assert.Equal(7, errors.Count);
+        Assert.Contains(nameof(RunMigrationRequest.SourceRepoPath), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.TargetLocalTempPath), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.TargetRemoteUrl), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.FilterOriginalEmail), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.NewAuthorName), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.NewAuthorEmail), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.TargetPatToken), errors.Keys);
+    }
+
+    [Fact]
+    public void ValidateRequest_AcceptsRemoteUrlSourceAndValidInputs()
+    {
+        RunMigrationRequest validRequest = new()
+        {
+            SourceRepoPath = "https://github.com/org/source-repo.git",
+            TargetLocalTempPath = Path.Combine(_tempRoot, "temp-target"),
+            TargetRemoteUrl = "https://github.com/user/target-repo.git",
+            FilterOriginalEmail = "dev@company.com",
+            NewAuthorName = "Dev Name",
+            NewAuthorEmail = "dev@personal.com",
+            TargetPatToken = "ghp_test123"
+        };
+
+        Dictionary<string, string> errors = MigrationService.ValidateRequest(validRequest);
+
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void ValidateRequest_RejectsInvalidEmailsAndInvalidRepoPaths()
+    {
+        RunMigrationRequest invalidRequest = new()
+        {
+            SourceRepoPath = Path.Combine(_tempRoot, "not-a-git-repo"),
+            TargetLocalTempPath = "relative/path",
+            TargetRemoteUrl = "not-a-url-or-repo",
+            FilterOriginalEmail = "invalid-email",
+            NewAuthorName = "Valid Name",
+            NewAuthorEmail = "also-invalid@",
+            TargetPatToken = "ghp_test123"
+        };
+
+        Dictionary<string, string> errors = MigrationService.ValidateRequest(invalidRequest);
+
+        Assert.Contains(nameof(RunMigrationRequest.SourceRepoPath), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.TargetLocalTempPath), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.TargetRemoteUrl), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.FilterOriginalEmail), errors.Keys);
+        Assert.Contains(nameof(RunMigrationRequest.NewAuthorEmail), errors.Keys);
+        Assert.DoesNotContain(nameof(RunMigrationRequest.NewAuthorName), errors.Keys);
+        Assert.DoesNotContain(nameof(RunMigrationRequest.TargetPatToken), errors.Keys);
+    }
+
+    [Theory]
+    [InlineData(AppLanguage.PtBr, "Informe o nome do novo autor.")]
+    [InlineData(AppLanguage.EnUs, "Enter the new author name.")]
+    [InlineData(AppLanguage.Es, "Ingrese el nombre del nuevo autor.")]
+    public void ValidateRequest_TranslatesErrorsAccordingToSelectedLanguage(AppLanguage language, string expectedError)
+    {
+        RunMigrationRequest emptyRequest = new();
+        Dictionary<string, string> errors = MigrationService.ValidateRequest(emptyRequest, language);
+
+        Assert.Equal(expectedError, errors[nameof(RunMigrationRequest.NewAuthorName)]);
+    }
+
     private static void CommitEmpty(Repository repo, string message, string name, string email, DateTimeOffset when)
     {
         Signature sig = new(name, email, when);
