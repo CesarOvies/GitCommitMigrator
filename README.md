@@ -42,7 +42,16 @@ flowchart LR
 
 ---
 
-## Requisitos e Execução
+## Download (Versão Portable)
+
+A cada merge na `main`, uma nova versão **Portable (`.zip` Self-Contained `win-x64`)** é publicada automaticamente em [**Releases**](https://github.com/CesarOvies/GitCommitMigrator/releases) e [**Packages**](https://github.com/CesarOvies/GitCommitMigrator/packages), acompanhada de:
+- Hashes criptográficos **SHA-256** e **SHA-512** (do `.zip` e do `.exe` + arquivo `.sha256`).
+- Varredura antimalware via **Microsoft Defender Antivirus** e relatório/links de verificação no **VirusTotal** (suporta upload automático configurando `secrets.VT_API_KEY`).
+- Atestado de proveniência de build (**SLSA Build Provenance Attestation**).
+
+---
+
+## Requisitos e Execução (Desenvolvimento)
 
 - **SO**: Windows x64
 - **SDK**: .NET 8.0+
@@ -71,16 +80,18 @@ O binário `Git.Commit.Migrator.exe` será gerado em `Migrator/bin/Release/net8.
 
 ---
 
-## Fluxo de Branches e CI (GitHub Actions)
+## Fluxo de Branches, CI e CD (GitHub Actions)
 
-O repositório conta com pipeline automatizado (`.github/workflows/ci.yml`) que impõe:
-1. **Regra de PR (`branch-policy`)**:
+O repositório conta com pipelines automatizados em `.github/workflows/`:
+1. **Regra de PR e Testes (`ci.yml`)**:
    - Todo PR de feature/fix deve apontar para `develop`.
    - A branch `main` aceita exclusivamente PRs originados de `develop`.
-   - PRs fora desse padrão são comentados e **fechados automaticamente**.
-2. **Qualidade e Testes (`build-and-test`)**:
    - Compila a solução e executa a suíte `Migrator.Tests` (xUnit).
-   - Se o build ou qualquer teste falhar durante um PR, o PR recebe um aviso e é **fechado automaticamente**.
+   - PRs fora do fluxo de branches ou com testes quebrados são comentados e **fechados automaticamente**.
+2. **Sincronização Automática (`sync-develop.yml`)**:
+   - Sempre que a `main` é atualizada, faz merge automático de `main` de volta para `develop`.
+3. **Release & Deploy Automático (`release.yml`)**:
+   - Ao entrar código na `main`, incrementa automaticamente a tag semântica (`v1.0.x`), compila o executável portátil single-file, gera o `.zip` e hashes SHA-256/SHA-512, executa scan de antivírus (Defender + VirusTotal), publica no **GitHub Packages** e cria a **GitHub Release** com os artefatos anexados.
 
 ---
 
@@ -89,7 +100,9 @@ O repositório conta com pipeline automatizado (`.github/workflows/ci.yml`) que 
 ```text
 GitCommitMigration.slnx
 ├── .github/workflows/
-│   └── ci.yml                          # Pipeline CI + Governança de PRs/Branches
+│   ├── ci.yml                          # Pipeline CI + Governança de PRs/Branches
+│   ├── release.yml                     # Deploy automático (Release Portable ZIP + Security/VirusTotal + Packages)
+│   └── sync-develop.yml                # Sincronização automática main -> develop
 ├── Migrator/
 │   ├── Forms/
 │   │   └── MigratorForm.cs             # UI principal (Windows Forms)
@@ -99,7 +112,7 @@ GitCommitMigration.slnx
 │   ├── Services/
 │   │   └── MigrationService.cs         # Motor de migração (ExtractCommits, ReconstructHistory, PushToRemote)
 │   ├── Program.cs                      # Ponto de entrada da aplicação
-│   └── Migrator.csproj                 # Configuração de build .NET 8 / LibGit2Sharp
+│   └── Migrator.csproj                 # Configuração de build .NET 8 / LibGit2Sharp / NuGet Package
 └── Migrator.Tests/
     ├── Services/
     │   └── MigrationServiceTests.cs    # Testes unitários e E2E do motor de migração

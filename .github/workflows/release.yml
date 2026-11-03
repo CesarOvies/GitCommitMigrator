@@ -1,0 +1,258 @@
+name: Release & Package Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  release-and-deploy:
+    name: Build Portable ZIP, Security Scan & Publish Release/Package
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Calculate Next Semantic Version & Tag
+        id: version
+        shell: pwsh
+        run: |
+          git fetch --tags --force
+          $latestTag = git tag --list "v*" --sort=-v:refname | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($latestTag)) {
+            $nextVersion = "1.0.0"
+          } else {
+            $ver = $latestTag.TrimStart('v') -split '\.'
+            $major = [int]$ver[0]
+            $minor = [int]$ver[1]
+            $patch = [int]$ver[2] + 1
+            $nextVersion = "$major.$minor.$patch"
+          }
+          $tagName = "v$nextVersion"
+          "version=$nextVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "tag=$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Next release version: $tagName"
+
+      - name: Run Tests Before Release
+        run: dotnet test GitCommitMigration.slnx -c Release
+
+      - name: Publish Single-File Portable Executable (win-x64)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        shell: pwsh
+        run: |
+          dotnet publish Migrator/Migrator.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:Version=$env:VERSION `
+            -o ./publish/portable
+
+      - name: Create Portable ZIP & Calculate Cryptographic Hashes
+        id: package_zip
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ./dist | Out-Null
+          Copy-Item LICENSE ./publish/portable/ -Force
+          Copy-Item README.md ./publish/portable/ -Force
+
+          $zipName = "Git.Commit.Migrator-$($env:TAG)-win-x64-portable.zip"
+          $zipPath = "./dist/$zipName"
+          $exePath = "./publish/portable/Git.Commit.Migrator.exe"
+
+          Compress-Archive -Path ./publish/portable/* -DestinationPath $zipPath -Force
+
+          $zipSha256 = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
+          $zipSha512 = (Get-FileHash -Path $zipPath -Algorithm SHA512).Hash.ToLower()
+          $exeSha256 = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLower()
+
+          $checksumContent = @(
+            "# SHA-256 Checksums"
+            "$zipSha256  $zipName"
+            "$exeSha256  Git.Commit.Migrator.exe"
+            ""
+            "# SHA-512 Checksums"
+            "$zipSha512  $zipName"
+          ) -join "`n"
+
+          $checksumFile = "./dist/$zipName.sha256"
+          Set-Content -Path $checksumFile -Value "$zipSha256  $zipName" -NoNewline
+
+          "zip_name=$zipName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "zip_path=$zipPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "checksum_path=$checksumFile" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "zip_sha256=$zipSha256" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "zip_sha512=$zipSha512" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "exe_sha256=$exeSha256" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Scan Portable Binary & ZIP with Windows Defender Antivirus
+        id: defender_scan
+        shell: pwsh
+        run: |
+          $mpCmdRun = "$env:ProgramFiles\Windows Defender\MpCmdRun.exe"
+          $fullPath = (Resolve-Path ./dist).Path
+          if (Test-Path $mpCmdRun) {
+            & $mpCmdRun -Scan -ScanType 3 -File $fullPath
+            if ($LASTEXITCODE -eq 0) {
+              "defender_status=✅ Limpo (0 ameaças detectadas pelo Microsoft Defender Antivirus)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+            } else {
+              throw "Microsoft Defender detectou ameaça ou falha no scan (ExitCode: $LASTEXITCODE)"
+            }
+          } else {
+            "defender_status=ℹ️ Scanner local indisponível no runner" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
+
+      - name: VirusTotal Scan & Analysis Link
+        id: virustotal
+        env:
+          VT_API_KEY: ${{ secrets.VT_API_KEY }}
+          ZIP_PATH: ${{ steps.package_zip.outputs.zip_path }}
+          ZIP_SHA256: ${{ steps.package_zip.outputs.zip_sha256 }}
+          EXE_SHA256: ${{ steps.package_zip.outputs.exe_sha256 }}
+        shell: pwsh
+        run: |
+          $vtZipGuiUrl = "https://www.virustotal.com/gui/file/$($env:ZIP_SHA256)"
+          $vtExeGuiUrl = "https://www.virustotal.com/gui/file/$($env:EXE_SHA256)"
+
+          if (-not [string]::IsNullOrWhiteSpace($env:VT_API_KEY)) {
+            try {
+              Write-Host "Enviando pacote portátil ao VirusTotal API v3..."
+              $headers = @{ "x-apikey" = $env:VT_API_KEY }
+              $form = @{ file = Get-Item -Path $env:ZIP_PATH }
+              $uploadResp = Invoke-RestMethod -Uri "https://www.virustotal.com/api/v3/files" -Method Post -Headers $headers -Form $form
+              $analysisId = $uploadResp.data.id
+
+              $stats = $null
+              for ($i = 0; $i -lt 12; $i++) {
+                Start-Sleep -Seconds 10
+                $analysisResp = Invoke-RestMethod -Uri "https://www.virustotal.com/api/v3/analyses/$analysisId" -Method Get -Headers $headers
+                if ($analysisResp.data.attributes.status -eq "completed") {
+                  $stats = $analysisResp.data.attributes.stats
+                  break
+                }
+              }
+
+              if ($null -ne $stats) {
+                $malicious = $stats.malicious
+                $suspicious = $stats.suspicious
+                $harmless = $stats.harmless + $stats.undetected
+                if ($malicious -eq 0 -and $suspicious -eq 0) {
+                  $vtSummary = "✅ **Limpo no VirusTotal**: `0` detecções maliciosas em `$harmless` motores antivírus."
+                } else {
+                  $vtSummary = "⚠️ **Alerta VirusTotal**: `$malicious` maliciosos / `$suspicious` suspeitos detectados."
+                }
+              } else {
+                $vtSummary = "⏳ **Arquivo enviado ao VirusTotal**: Análise em processamento (veja o relatório nos links abaixo)."
+              }
+            } catch {
+              Write-Warning "Falha ao consultar API do VirusTotal: $_"
+              $vtSummary = "🔎 **Consulta direta por Hash no VirusTotal** (veja os links abaixo)."
+            }
+          } else {
+            $vtSummary = "🔎 **Verificação VirusTotal disponível via Hash SHA-256** (configure `secrets.VT_API_KEY` no repositório para upload e contagem automática de motores no pipeline)."
+          }
+
+          "vt_summary=$vtSummary" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "vt_zip_url=$vtZipGuiUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "vt_exe_url=$vtExeGuiUrl" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: Generate GitHub Artifact Build Provenance Attestation
+        uses: actions/attest-build-provenance@v2
+        continue-on-error: true
+        with:
+          subject-path: ${{ steps.package_zip.outputs.zip_path }}
+
+      - name: Pack & Publish to GitHub Packages (NuGet Registry)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          dotnet pack Migrator/Migrator.csproj -c Release -p:PackageVersion=$env:VERSION -o ./nupkg
+          dotnet nuget add source --username ${{ github.actor }} --password $env:GITHUB_TOKEN --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          dotnet nuget push "./nupkg/*.nupkg" --api-key $env:GITHUB_TOKEN --source "github" --skip-duplicate
+
+      - name: Create Git Tag & Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+          ZIP_NAME: ${{ steps.package_zip.outputs.zip_name }}
+          ZIP_PATH: ${{ steps.package_zip.outputs.zip_path }}
+          CHECKSUM_PATH: ${{ steps.package_zip.outputs.checksum_path }}
+          ZIP_SHA256: ${{ steps.package_zip.outputs.zip_sha256 }}
+          ZIP_SHA512: ${{ steps.package_zip.outputs.zip_sha512 }}
+          EXE_SHA256: ${{ steps.package_zip.outputs.exe_sha256 }}
+          DEFENDER_STATUS: ${{ steps.defender_scan.outputs.defender_status }}
+          VT_SUMMARY: ${{ steps.virustotal.outputs.vt_summary }}
+          VT_ZIP_URL: ${{ steps.virustotal.outputs.vt_zip_url }}
+          VT_EXE_URL: ${{ steps.virustotal.outputs.vt_exe_url }}
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a $env:TAG -m "Release $env:TAG"
+          git push origin $env:TAG
+
+          $notes = @"
+          ## 🚀 Git Commit Migrator $($env:TAG) (Portable Release)
+
+          Versão **Portable (Single-File Self-Contained)** pronta para uso no Windows x64 — não requer instalação do .NET Runtime.
+
+          ### 📦 Download Direto
+          - **Arquivo Portable**: [`$($env:ZIP_NAME)`](https://github.com/${{ github.repository }}/releases/download/$($env:TAG)/$($env:ZIP_NAME))
+          - **Arquivo de Checksum**: [`$($env:ZIP_NAME).sha256`](https://github.com/${{ github.repository }}/releases/download/$($env:TAG)/$($env:ZIP_NAME).sha256)
+          - **GitHub Packages (NuGet)**: `Git.Commit.Migrator` v`$($env:VERSION)`
+
+          ---
+
+          ### 🛡️ Relatório de Segurança e Integridade
+
+          | Verificação | Resultado |
+          |---|---|
+          | **Microsoft Defender Antivirus** | $($env:DEFENDER_STATUS) |
+          | **Status VirusTotal** | $($env:VT_SUMMARY) |
+          | **Relatório VirusTotal (ZIP)** | [🔗 Abrir Análise do ZIP no VirusTotal]($($env:VT_ZIP_URL)) |
+          | **Relatório VirusTotal (EXE)** | [🔗 Abrir Análise do EXE no VirusTotal]($($env:VT_EXE_URL)) |
+          | **Build Provenance (SLSA)** | Gerado automaticamente via GitHub Actions Attestations |
+
+          ---
+
+          ### 🔐 Hashes Criptográficos (Verificação de Integridade)
+
+          | Arquivo | Algoritmo | Hash |
+          |---|---|---|
+          | `$($env:ZIP_NAME)` | **SHA-256** | ``$($env:ZIP_SHA256)`` |
+          | `Git.Commit.Migrator.exe` | **SHA-256** | ``$($env:EXE_SHA256)`` |
+          | `$($env:ZIP_NAME)` | **SHA-512** | ``$($env:ZIP_SHA512)`` |
+
+          #### Como validar o hash no PowerShell antes de executar:
+          ```powershell
+          Get-FileHash .\Git.Commit.Migrator-$($env:TAG)-win-x64-portable.zip -Algorithm SHA256
+          ```
+          "@
+
+          $notesFile = "./dist/RELEASE_NOTES.md"
+          Set-Content -Path $notesFile -Value $notes -Encoding UTF8
+
+          gh release create $env:TAG $env:ZIP_PATH $env:CHECKSUM_PATH `
+            --title "Git Commit Migrator $($env:TAG) (Portable)" `
+            --notes-file $notesFile `
+            --generate-notes
+
