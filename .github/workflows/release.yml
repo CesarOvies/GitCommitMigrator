@@ -62,6 +62,37 @@ jobs:
             -p:Version=$env:VERSION `
             -o ./publish/portable
 
+      - name: Sign Portable Executable (if certificate configured)
+        env:
+          CERT_BASE64: ${{ secrets.CERT_PFX_BASE64 }}
+          CERT_PASS: ${{ secrets.CERT_PASSWORD }}
+        shell: pwsh
+        run: |
+          if (-not [string]::IsNullOrWhiteSpace($env:CERT_BASE64) -and -not [string]::IsNullOrWhiteSpace($env:CERT_PASS)) {
+            Write-Host "Certificado encontrado. Assinando Git.Commit.Migrator.exe..."
+            $pfxPath = "./cert.pfx"
+            try {
+              $pfxBytes = [Convert]::FromBase64String($env:CERT_BASE64)
+              [IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+              $securePass = ConvertTo-SecureString -String $env:CERT_PASS -Force -AsPlainText
+              $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\My" -Password $securePass
+              $sigResult = Set-AuthenticodeSignature `
+                -FilePath "./publish/portable/Git.Commit.Migrator.exe" `
+                -Certificate $cert `
+                -HashAlgorithm SHA256 `
+                -TimestampServer "http://timestamp.digicert.com"
+              Write-Host "Assinatura concluída com status: $($sigResult.Status)"
+            } catch {
+              Write-Warning "Falha ao assinar o executável (prosseguindo sem assinatura): $_"
+            } finally {
+              if (Test-Path $pfxPath) {
+                Remove-Item $pfxPath -Force
+              }
+            }
+          } else {
+            Write-Host "Secrets CERT_PFX_BASE64 / CERT_PASSWORD não configuradas. Prosseguindo sem assinatura."
+          }
+
       - name: Create Portable ZIP & Calculate Cryptographic Hashes
         id: package_zip
         env:
