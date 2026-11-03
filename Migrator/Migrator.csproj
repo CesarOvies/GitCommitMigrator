@@ -13,6 +13,7 @@
     <PublishTrimmed>false</PublishTrimmed>
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>Git.Commit.Migrator</AssemblyName>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
