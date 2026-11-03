@@ -480,3 +480,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Local AI / MCP session artifacts
+.github/context-mode/
+.context-mode/
+.codegraph/
