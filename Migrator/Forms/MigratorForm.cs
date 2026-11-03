@@ -9,6 +9,8 @@ namespace Migrator.Forms;
 
 public class MigratorForm : Form
 {
+    private const int FieldWidth = 380;
+
     private readonly TextBox txtSourceRepo;
     private readonly TextBox txtLocalTemp;
     private readonly TextBox txtRemoteUrl;
@@ -21,16 +23,19 @@ public class MigratorForm : Form
     public MigratorForm()
     {
         Text = "Git Commit Migrator";
-        Size = new Size(400, 520);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
+        AutoScaleMode = AutoScaleMode.Dpi;
 
         var panel = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
-            Padding = new Padding(15)
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            Padding = new Padding(20)
         };
 
         txtSourceRepo = AddField(panel, "Source Repo Path (Local):");
@@ -45,21 +50,35 @@ public class MigratorForm : Form
         btnMigrate = new Button
         {
             Text = "Executar Migração",
-            Width = 350,
+            Width = FieldWidth,
             Height = 40,
-            Margin = new Padding(0, 15, 0, 0),
+            Margin = new Padding(0, 18, 0, 5),
             Cursor = Cursors.Hand
         };
         btnMigrate.Click += async (s, e) => await ExecuteMigrationAsync();
 
         panel.Controls.Add(btnMigrate);
         Controls.Add(panel);
+
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
     }
 
-    private TextBox AddField(FlowLayoutPanel panel, string labelText)
+    private static TextBox AddField(FlowLayoutPanel panel, string labelText)
     {
-        panel.Controls.Add(new Label { Text = labelText, Width = 350, Margin = new Padding(0, 5, 0, 2) });
-        var textBox = new TextBox { Width = 350 };
+        panel.Controls.Add(new Label
+        {
+            Text = labelText,
+            Width = FieldWidth,
+            AutoSize = true,
+            Margin = new Padding(0, 8, 0, 3)
+        });
+
+        var textBox = new TextBox
+        {
+            Width = FieldWidth,
+            Margin = new Padding(0, 0, 0, 2)
+        };
         panel.Controls.Add(textBox);
         return textBox;
     }
@@ -97,4 +116,3 @@ public class MigratorForm : Form
         }
     }
 }
-
