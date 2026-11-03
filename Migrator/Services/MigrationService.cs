@@ -6,75 +6,76 @@ namespace Migrator.Services;
 
 public static class MigrationService
 {
-    public static Dictionary<string, string> ValidateRequest(RunMigrationRequest request)
+    public static Dictionary<string, string> ValidateRequest(RunMigrationRequest request, AppLanguage language = AppLanguage.PtBr)
     {
+        UiTranslations t = LocalizationService.Get(language);
         Dictionary<string, string> errors = new();
 
         string source = request.SourceRepoPath?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(source))
         {
-            errors[nameof(RunMigrationRequest.SourceRepoPath)] = "Informe o caminho local ou a URL remota do repositório de origem.";
+            errors[nameof(RunMigrationRequest.SourceRepoPath)] = t.ErrSourceEmpty;
         }
         else if (!IsRemoteUrl(source) && !Repository.IsValid(source))
         {
-            errors[nameof(RunMigrationRequest.SourceRepoPath)] = "Informe uma pasta local com um repositório Git válido ou uma URL remota (http/https/git).";
+            errors[nameof(RunMigrationRequest.SourceRepoPath)] = t.ErrSourceInvalid;
         }
 
         string targetTemp = request.TargetLocalTempPath?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(targetTemp))
         {
-            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = "Informe a pasta temporária local onde o histórico será reconstruído.";
+            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = t.ErrTargetTempEmpty;
         }
         else if (!IsValidLocalPath(targetTemp))
         {
-            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = "Informe um caminho de pasta local absoluto válido (ex: C:\\Temp\\Repo).";
+            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = t.ErrTargetTempInvalid;
         }
         else if (!string.IsNullOrEmpty(source) && !IsRemoteUrl(source) && IsValidLocalPath(source) &&
                  string.Equals(Path.GetFullPath(source).TrimEnd('\\', '/'), Path.GetFullPath(targetTemp).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
         {
-            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = "A pasta temporária de destino não pode ser a mesma do repositório de origem.";
+            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = t.ErrTargetTempSameAsSource;
         }
 
         string remoteUrl = request.TargetRemoteUrl?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(remoteUrl))
         {
-            errors[nameof(RunMigrationRequest.TargetRemoteUrl)] = "Informe a URL ou caminho do repositório remoto de destino.";
+            errors[nameof(RunMigrationRequest.TargetRemoteUrl)] = t.ErrRemoteUrlEmpty;
         }
         else if (!IsRemoteUrl(remoteUrl) && !Repository.IsValid(remoteUrl))
         {
-            errors[nameof(RunMigrationRequest.TargetRemoteUrl)] = "Informe uma URL remota válida (ex: https://github.com/usuario/repo.git) ou repositório bare local.";
+            errors[nameof(RunMigrationRequest.TargetRemoteUrl)] = t.ErrRemoteUrlInvalid;
         }
 
         string originalEmail = request.FilterOriginalEmail?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(originalEmail))
         {
-            errors[nameof(RunMigrationRequest.FilterOriginalEmail)] = "Informe o e-mail original usado nos commits.";
+            errors[nameof(RunMigrationRequest.FilterOriginalEmail)] = t.ErrOriginalEmailEmpty;
         }
         else if (!IsValidEmail(originalEmail))
         {
-            errors[nameof(RunMigrationRequest.FilterOriginalEmail)] = "Informe um endereço de e-mail original válido (ex: autor@empresa.com).";
+            errors[nameof(RunMigrationRequest.FilterOriginalEmail)] = t.ErrOriginalEmailInvalid;
         }
 
         string newName = request.NewAuthorName?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(newName))
         {
-            errors[nameof(RunMigrationRequest.NewAuthorName)] = "Informe o nome do novo autor.";
+            errors[nameof(RunMigrationRequest.NewAuthorName)] = t.ErrNewNameEmpty;
         }
 
         string newEmail = request.NewAuthorEmail?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(newEmail))
         {
-            errors[nameof(RunMigrationRequest.NewAuthorEmail)] = "Informe o e-mail do novo autor.";
+            errors[nameof(RunMigrationRequest.NewAuthorEmail)] = t.ErrNewEmailEmpty;
         }
         else if (!IsValidEmail(newEmail))
         {
-            errors[nameof(RunMigrationRequest.NewAuthorEmail)] = "Informe um endereço de e-mail válido para o novo autor (ex: voce@email.com).";
+            errors[nameof(RunMigrationRequest.NewAuthorEmail)] = t.ErrNewEmailInvalid;
         }
 
         string pat = request.TargetPatToken?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(pat))
         {
-            errors[nameof(RunMigrationRequest.TargetPatToken)] = "Informe o Personal Access Token (PAT) para autenticar o push.";
+            errors[nameof(RunMigrationRequest.TargetPatToken)] = t.ErrPatEmpty;
         }
 
         return errors;

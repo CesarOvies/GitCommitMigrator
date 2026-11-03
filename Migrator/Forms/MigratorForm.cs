@@ -15,18 +15,30 @@ public class MigratorForm : Form
     private const int BrowseButtonWidth = 36;
 
     private readonly ErrorProvider errorProvider;
+    private readonly Label lblSourceRepo;
     private readonly TextBox txtSourceRepo;
+    private readonly Label lblLocalTemp;
     private readonly TextBox txtLocalTemp;
+    private readonly Label lblRemoteUrl;
     private readonly TextBox txtRemoteUrl;
+    private readonly Label lblOriginalEmail;
     private readonly TextBox txtOriginalEmail;
+    private readonly Label lblNewName;
     private readonly TextBox txtNewName;
+    private readonly Label lblNewEmail;
     private readonly TextBox txtNewEmail;
+    private readonly Label lblPatToken;
     private readonly TextBox txtPatToken;
     private readonly Button btnMigrate;
+    private readonly Label lblLanguage;
+    private readonly ComboBox cmbLanguage;
+
+    private AppLanguage currentLanguage = AppLanguage.PtBr;
+    private bool isProcessing;
+    private bool hasActiveErrors;
 
     public MigratorForm()
     {
-        Text = "Git Commit Migrator";
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -44,94 +56,150 @@ public class MigratorForm : Form
             WrapContents = false,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Padding = new Padding(20, 20, 36, 20)
+            Padding = new Padding(20, 20, 36, 12)
         };
 
-        txtSourceRepo = AddFolderField(
-            panel,
-            "Source Repo (Local Path ou Remote URL):",
-            "Ex: C:\\Repos\\Projeto ou https://github.com/org/repo.git",
-            "Selecione a pasta do repositório Git de origem");
-
-        txtLocalTemp = AddFolderField(
-            panel,
-            "Target Local Temp Path:",
-            "Ex: C:\\Temp\\MigracaoGhost",
-            "Selecione a pasta temporária para reconstruir o histórico");
-
-        txtRemoteUrl = AddField(
-            panel,
-            "Target Remote URL:",
-            "Ex: https://github.com/seu-usuario/historico-migrado.git");
-
-        txtOriginalEmail = AddField(
-            panel,
-            "Filter Original Email:",
-            "Ex: seu.nome@empresa-antiga.com");
-
-        txtNewName = AddField(
-            panel,
-            "New Author Name:",
-            "Ex: Seu Nome");
-
-        txtNewEmail = AddField(
-            panel,
-            "New Author Email:",
-            "Ex: seu.email@pessoal.com");
-
-        txtPatToken = AddField(
-            panel,
-            "Target PAT Token:",
-            "Ex: ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+        (lblSourceRepo, txtSourceRepo) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).SourceRepoBrowseTitle);
+        (lblLocalTemp, txtLocalTemp) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).LocalTempBrowseTitle);
+        (lblRemoteUrl, txtRemoteUrl) = AddField(panel);
+        (lblOriginalEmail, txtOriginalEmail) = AddField(panel);
+        (lblNewName, txtNewName) = AddField(panel);
+        (lblNewEmail, txtNewEmail) = AddField(panel);
+        (lblPatToken, txtPatToken) = AddField(panel);
         txtPatToken.PasswordChar = '*';
 
         btnMigrate = new Button
         {
-            Text = "Executar Migração",
             Width = FieldWidth,
             Height = 40,
-            Margin = new Padding(0, 18, 0, 5),
+            Margin = new Padding(0, 18, 0, 10),
             Cursor = Cursors.Hand
         };
         btnMigrate.Click += async (s, e) => await ExecuteMigrationAsync();
-
         panel.Controls.Add(btnMigrate);
+
+        var footerBar = new Panel
+        {
+            Width = FieldWidth,
+            Height = 32,
+            Margin = new Padding(0, 4, 0, 0)
+        };
+
+        var separator = new Label
+        {
+            BorderStyle = BorderStyle.Fixed3D,
+            Height = 2,
+            Width = FieldWidth,
+            Location = new Point(0, 0)
+        };
+
+        lblLanguage = new Label
+        {
+            AutoSize = true,
+            Location = new Point(0, 10)
+        };
+
+        cmbLanguage = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Width = 170,
+            Location = new Point(FieldWidth - 170, 6)
+        };
+        cmbLanguage.Items.AddRange(
+        [
+            "Português (PT-BR)",
+            "English (EN-US)",
+            "Español (ES)"
+        ]);
+        cmbLanguage.SelectedIndex = 0;
+        cmbLanguage.SelectedIndexChanged += (s, e) =>
+        {
+            currentLanguage = cmbLanguage.SelectedIndex switch
+            {
+                1 => AppLanguage.EnUs,
+                2 => AppLanguage.Es,
+                _ => AppLanguage.PtBr
+            };
+            ApplyLanguage();
+        };
+
+        footerBar.Controls.Add(separator);
+        footerBar.Controls.Add(lblLanguage);
+        footerBar.Controls.Add(cmbLanguage);
+        panel.Controls.Add(footerBar);
+
         Controls.Add(panel);
+
+        ApplyLanguage();
 
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
     }
 
-    private TextBox AddField(FlowLayoutPanel panel, string labelText, string placeholder)
+    private void ApplyLanguage()
     {
-        panel.Controls.Add(new Label
+        UiTranslations t = LocalizationService.Get(currentLanguage);
+
+        Text = t.WindowTitle;
+        lblSourceRepo.Text = t.SourceRepoLabel;
+        txtSourceRepo.PlaceholderText = t.SourceRepoPlaceholder;
+
+        lblLocalTemp.Text = t.LocalTempLabel;
+        txtLocalTemp.PlaceholderText = t.LocalTempPlaceholder;
+
+        lblRemoteUrl.Text = t.RemoteUrlLabel;
+        txtRemoteUrl.PlaceholderText = t.RemoteUrlPlaceholder;
+
+        lblOriginalEmail.Text = t.OriginalEmailLabel;
+        txtOriginalEmail.PlaceholderText = t.OriginalEmailPlaceholder;
+
+        lblNewName.Text = t.NewNameLabel;
+        txtNewName.PlaceholderText = t.NewNamePlaceholder;
+
+        lblNewEmail.Text = t.NewEmailLabel;
+        txtNewEmail.PlaceholderText = t.NewEmailPlaceholder;
+
+        lblPatToken.Text = t.PatTokenLabel;
+        txtPatToken.PlaceholderText = t.PatTokenPlaceholder;
+
+        btnMigrate.Text = isProcessing ? t.ProcessingButton : t.MigrateButton;
+        lblLanguage.Text = t.LanguageLabel;
+
+        if (hasActiveErrors)
         {
-            Text = labelText,
+            UpdateErrorProviderIcons(BuildRequest());
+        }
+    }
+
+    private (Label Label, TextBox Input) AddField(FlowLayoutPanel panel)
+    {
+        var label = new Label
+        {
             Width = FieldWidth,
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 3)
-        });
+        };
+        panel.Controls.Add(label);
 
         var textBox = new TextBox
         {
             Width = FieldWidth,
-            PlaceholderText = placeholder,
             Margin = new Padding(0, 0, 0, 2)
         };
         textBox.TextChanged += (s, e) => errorProvider.SetError(textBox, string.Empty);
         panel.Controls.Add(textBox);
-        return textBox;
+        return (label, textBox);
     }
 
-    private TextBox AddFolderField(FlowLayoutPanel panel, string labelText, string placeholder, string dialogDescription)
+    private (Label Label, TextBox Input) AddFolderField(FlowLayoutPanel panel, Func<string> getDialogTitle)
     {
-        panel.Controls.Add(new Label
+        var label = new Label
         {
-            Text = labelText,
             Width = FieldWidth,
             AutoSize = true,
             Margin = new Padding(0, 8, 0, 3)
-        });
+        };
+        panel.Controls.Add(label);
 
         var row = new FlowLayoutPanel
         {
@@ -145,7 +213,6 @@ public class MigratorForm : Form
         var textBox = new TextBox
         {
             Width = FieldWidth - BrowseButtonWidth - 6,
-            PlaceholderText = placeholder,
             Margin = new Padding(0, 0, 6, 0)
         };
 
@@ -164,7 +231,7 @@ public class MigratorForm : Form
         {
             using var dialog = new FolderBrowserDialog
             {
-                Description = dialogDescription,
+                Description = getDialogTitle(),
                 UseDescriptionForTitle = true,
                 ShowNewFolderButton = true
             };
@@ -179,18 +246,26 @@ public class MigratorForm : Form
         row.Controls.Add(btnBrowse);
         panel.Controls.Add(row);
         textBox.Tag = btnBrowse;
-        return textBox;
+        return (label, textBox);
     }
 
-    private bool ValidateInputs(RunMigrationRequest request)
+    private RunMigrationRequest BuildRequest() => new()
+    {
+        SourceRepoPath = txtSourceRepo.Text,
+        TargetLocalTempPath = txtLocalTemp.Text,
+        TargetRemoteUrl = txtRemoteUrl.Text,
+        FilterOriginalEmail = txtOriginalEmail.Text,
+        NewAuthorName = txtNewName.Text,
+        NewAuthorEmail = txtNewEmail.Text,
+        TargetPatToken = txtPatToken.Text
+    };
+
+    private Dictionary<string, string> UpdateErrorProviderIcons(RunMigrationRequest request)
     {
         errorProvider.Clear();
 
-        Dictionary<string, string> errors = MigrationService.ValidateRequest(request);
-        if (errors.Count == 0)
-        {
-            return true;
-        }
+        Dictionary<string, string> errors = MigrationService.ValidateRequest(request, currentLanguage);
+        hasActiveErrors = errors.Count > 0;
 
         var fieldMap = new Dictionary<string, Control>
         {
@@ -211,10 +286,22 @@ public class MigratorForm : Form
             }
         }
 
+        return errors;
+    }
+
+    private bool ValidateInputs(RunMigrationRequest request)
+    {
+        Dictionary<string, string> errors = UpdateErrorProviderIcons(request);
+        if (errors.Count == 0)
+        {
+            return true;
+        }
+
+        UiTranslations t = LocalizationService.Get(currentLanguage);
         string summary = string.Join(Environment.NewLine, errors.Values.Select(m => $"• {m}"));
         MessageBox.Show(
-            $"Corrija os campos abaixo antes de continuar:\n\n{summary}",
-            "Campos Inválidos",
+            $"{t.ValidationSummaryHeader}\n\n{summary}",
+            t.ValidationSummaryTitle,
             MessageBoxButtons.OK,
             MessageBoxIcon.Warning);
 
@@ -223,39 +310,35 @@ public class MigratorForm : Form
 
     private async Task ExecuteMigrationAsync()
     {
-        var request = new RunMigrationRequest
-        {
-            SourceRepoPath = txtSourceRepo.Text,
-            TargetLocalTempPath = txtLocalTemp.Text,
-            TargetRemoteUrl = txtRemoteUrl.Text,
-            FilterOriginalEmail = txtOriginalEmail.Text,
-            NewAuthorName = txtNewName.Text,
-            NewAuthorEmail = txtNewEmail.Text,
-            TargetPatToken = txtPatToken.Text
-        };
+        RunMigrationRequest request = BuildRequest();
 
         if (!ValidateInputs(request))
         {
             return;
         }
 
+        UiTranslations t = LocalizationService.Get(currentLanguage);
+        isProcessing = true;
         btnMigrate.Enabled = false;
-        btnMigrate.Text = "Processando...";
+        btnMigrate.Text = t.ProcessingButton;
 
         try
         {
             await Task.Run(() => MigrationService.RunMigration(request));
 
-            MessageBox.Show("Migração concluída com sucesso!", "Sucesso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            t = LocalizationService.Get(currentLanguage);
+            MessageBox.Show(t.SuccessMessage, t.SuccessTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Erro na migração:\n{ex.Message}", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            t = LocalizationService.Get(currentLanguage);
+            MessageBox.Show($"{t.ErrorMessagePrefix}\n{ex.Message}", t.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
+            isProcessing = false;
             btnMigrate.Enabled = true;
-            btnMigrate.Text = "Executar Migração";
+            btnMigrate.Text = LocalizationService.Get(currentLanguage).MigrateButton;
         }
     }
 }

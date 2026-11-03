@@ -193,6 +193,18 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.DoesNotContain(nameof(RunMigrationRequest.TargetPatToken), errors.Keys);
     }
 
+    [Theory]
+    [InlineData(AppLanguage.PtBr, "Informe o nome do novo autor.")]
+    [InlineData(AppLanguage.EnUs, "Enter the new author name.")]
+    [InlineData(AppLanguage.Es, "Ingrese el nombre del nuevo autor.")]
+    public void ValidateRequest_TranslatesErrorsAccordingToSelectedLanguage(AppLanguage language, string expectedError)
+    {
+        RunMigrationRequest emptyRequest = new();
+        Dictionary<string, string> errors = MigrationService.ValidateRequest(emptyRequest, language);
+
+        Assert.Equal(expectedError, errors[nameof(RunMigrationRequest.NewAuthorName)]);
+    }
+
     private static void CommitEmpty(Repository repo, string message, string name, string email, DateTimeOffset when)
     {
         Signature sig = new(name, email, when);
