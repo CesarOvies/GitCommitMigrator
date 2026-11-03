@@ -184,9 +184,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          dotnet pack Migrator/Migrator.csproj -c Release -p:PackageVersion=$env:VERSION -o ./nupkg
+          dotnet pack Migrator/Migrator.csproj -c Release -p:PackageVersion=$env:VERSION -o nupkg
           dotnet nuget add source --username ${{ github.actor }} --password $env:GITHUB_TOKEN --store-password-in-clear-text --name github "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
-          dotnet nuget push "./nupkg/*.nupkg" --api-key $env:GITHUB_TOKEN --source "github" --skip-duplicate
+          $packages = Get-ChildItem -Path nupkg -Filter *.nupkg
+          if ($packages.Count -eq 0) {
+            throw "Nenhum pacote .nupkg encontrado no diretório nupkg."
+          }
+          foreach ($pkg in $packages) {
+            dotnet nuget push $pkg.FullName --api-key $env:GITHUB_TOKEN --source "github" --skip-duplicate
+          }
 
       - name: Create Git Tag & Publish GitHub Release
         env:
@@ -255,4 +261,3 @@ jobs:
             --title "Git Commit Migrator $($env:TAG) (Portable)" `
             --notes-file $notesFile `
             --generate-notes
-
