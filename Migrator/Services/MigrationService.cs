@@ -1,8 +1,9 @@
 using LibGit2Sharp;
+using Migrator.Models;
 
-namespace Migrator;
+namespace Migrator.Services;
 
-public class Logical
+public static class MigrationService
 {
     public static void RunMigration(RunMigrationRequest request)
     {
@@ -88,3 +89,4 @@ public class Logical
         targetRepo.Network.Push(remote, @"refs/heads/main", pushOptions);
     }
 }
+

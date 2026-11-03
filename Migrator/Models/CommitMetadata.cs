@@ -1,4 +1,4 @@
-namespace Migrator;
+namespace Migrator.Models;
 
 public class CommitMetadata
 {
@@ -6,3 +6,4 @@ public class CommitMetadata
 
     public DateTimeOffset When { get; set; }
 }
+

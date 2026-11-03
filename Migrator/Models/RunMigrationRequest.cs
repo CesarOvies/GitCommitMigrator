@@ -1,4 +1,4 @@
-namespace Migrator;
+namespace Migrator.Models;
 
 public class RunMigrationRequest
 {
@@ -16,3 +16,4 @@ public class RunMigrationRequest
 
     public string TargetPatToken { get; set; } = string.Empty;
 }
+
