@@ -10,7 +10,7 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 
 - **TargetFramework**: `net8.0-windows` (`OutputType: Exe`, `UseWindowsForms: true`)
 - **RuntimeIdentifier**: `win-x64` (`PublishSingleFile: true`, `SelfContained: true`, `PublishReadyToRun: true`)
-- **AssemblyName**: `Git.Commit.Migrator`
+- **AssemblyName / PackageId**: `Git.Commit.Migrator` (`MIT`)
 - **Dependência principal**: `LibGit2Sharp` (`0.31.0`)
 - **Solution**: `GitCommitMigration.slnx` (inclui `Migrator` e `Migrator.Tests`)
 - **Estilo (`.editorconfig`)**: `dotnet_style_namespace_match_folder = true` (namespaces refletem a hierarquia de pastas).
@@ -26,6 +26,8 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 | `Migrator/Models/CommitMetadata.cs` | `Migrator.Models.CommitMetadata` | DTO representando um commit extraído (`Message` e `When`). |
 | `Migrator.Tests/Services/MigrationServiceTests.cs` | `Migrator.Tests.Services.MigrationServiceTests` | Testes automatizados (xUnit) validando extração, reconstrução de histórico e push E2E em repositório bare local. |
 | `.github/workflows/ci.yml` | `CI & PR Policy` | Workflow do GitHub Actions que valida governança de branches em PRs (`* -> develop` e `develop -> main`), roda `dotnet test` e fecha automaticamente PRs inválidos ou com testes quebrados. |
+| `.github/workflows/sync-develop.yml` | `Sync Develop with Main` | Faz merge automático de `main` em `develop` após qualquer push na `main`. |
+| `.github/workflows/release.yml` | `Release & Package Deploy` | Ao entrar commit na `main`, gera tag `v1.0.x`, empacota versão Portable `.zip` (`win-x64`), calcula hashes SHA-256/SHA-512, roda scan Defender + VirusTotal, gera atestado SLSA, publica no GitHub Packages e cria GitHub Release. |
 
 ## 4. Fluxo Passo a Passo (`MigrationService.cs`)
 
@@ -47,11 +49,12 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
    - Configura `UsernamePasswordCredentials` com `Username = "PAT"` e `Password = targetPatToken`.
    - Faz push de `refs/heads/main` para `origin`.
 
-## 5. Governança de Branches e CI
+## 5. Governança de Branches, CI e Release
 
-- Toda alteração deve ser feita em `develop` (ou branches direcionadas a `develop`).
+- Toda alteração deve ser feita em branches direcionadas a `develop`.
 - A `main` só recebe merge vindo de `develop`.
 - Todos os testes em `Migrator.Tests` devem passar antes de abrir/mesclar PRs.
+- Merges na `main` disparam automaticamente `release.yml` (tag + GitHub Release com Portable `.zip`, hashes SHA-256/SHA-512, scan Defender/VirusTotal + GitHub Packages) e `sync-develop.yml`.
 
 ## 6. Comandos Úteis
 

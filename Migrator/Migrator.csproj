@@ -13,8 +13,19 @@
     <PublishTrimmed>false</PublishTrimmed>
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>Git.Commit.Migrator</AssemblyName>
+    <PackageId>Git.Commit.Migrator</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Cesar Ovies</Authors>
+    <Description>Aplicação Windows Forms (.NET 8) para migrar histórico de contribuições Git usando Ghost Commits.</Description>
+    <RepositoryUrl>https://github.com/CesarOvies/GitCommitMigrator</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
