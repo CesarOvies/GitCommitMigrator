@@ -165,8 +165,15 @@ jobs:
             try {
               Write-Host "Enviando pacote portátil ao VirusTotal API v3..."
               $headers = @{ "x-apikey" = $env:VT_API_KEY }
-              $form = @{ file = Get-Item -Path $env:ZIP_PATH }
-              $uploadResp = Invoke-RestMethod -Uri "https://www.virustotal.com/api/v3/files" -Method Post -Headers $headers -Form $form
+              $fileItem = Get-Item -Path $env:ZIP_PATH
+              if ($fileItem.Length -gt 32MB) {
+                $uploadUrlResp = Invoke-RestMethod -Uri "https://www.virustotal.com/api/v3/files/upload_url" -Method Get -Headers $headers
+                $uploadUri = $uploadUrlResp.data
+              } else {
+                $uploadUri = "https://www.virustotal.com/api/v3/files"
+              }
+              $form = @{ file = $fileItem }
+              $uploadResp = Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -Form $form
               $analysisId = $uploadResp.data.id
 
               $stats = $null
