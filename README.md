@@ -10,6 +10,10 @@
 
 <p align="center">
   <a href="https://github.com/CesarOvies/GitCommitMigrator/releases"><img src="https://img.shields.io/github/v/release/CesarOvies/GitCommitMigrator?logo=github&label=Release" alt="GitHub Release" /></a>
+  <a href="https://github.com/CesarOvies/GitCommitMigrator/stargazers"><img src="https://img.shields.io/github/stars/CesarOvies/GitCommitMigrator?style=flat&logo=github&color=gold" alt="GitHub Stars" /></a>
+  <a href="https://github.com/CesarOvies/GitCommitMigrator/network/members"><img src="https://img.shields.io/github/forks/CesarOvies/GitCommitMigrator?style=flat&logo=github&color=blue" alt="GitHub Forks" /></a>
+  <a href="https://github.com/CesarOvies/GitCommitMigrator/issues"><img src="https://img.shields.io/github/issues/CesarOvies/GitCommitMigrator?style=flat&logo=github" alt="GitHub Issues" /></a>
+  <a href="https://github.com/CesarOvies/GitCommitMigrator/graphs/contributors"><img src="https://img.shields.io/github/contributors/CesarOvies/GitCommitMigrator?color=success" alt="Contributors" /></a>
   <img src="https://img.shields.io/badge/.NET-8.0--windows-512BD4?logo=dotnet" alt=".NET 8.0" />
   <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/LibGit2Sharp-0.31.0-F05032?logo=git" alt="LibGit2Sharp" />
@@ -184,6 +188,68 @@ O repositório implementa padrões de entrega contínua com validação automati
   - Executa análise antimalware com **Microsoft Defender** e relatório no **VirusTotal**.
   - Gera atestado de proveniência de compilação (**SLSA Build Provenance**).
   - Publica os artefatos no **GitHub Packages** e no **GitHub Releases**.
+
+---
+
+## 🤝 Como Contribuir
+
+Contribuições da comunidade são muito bem-vindas! Para manter a integridade, estabilidade e automação contínua do projeto, seguimos regras estritas de governança:
+
+### ⚠️ Regras Essenciais de Governança
+
+1. **Branch de Destino Obrigatória (`develop`)**:
+   - Todo Pull Request **deve ser aberto obrigatoriamente contra a branch `develop`**.
+   - Pull Requests abertos diretamente contra a `main` (que não venham de `develop`) são **fechados automaticamente pelo robô de CI**.
+2. **Suíte de Testes Obrigatória**:
+   - Todos os testes unitários e de integração em `Migrator.Tests` precisam passar (`dotnet test`).
+   - Se o build ou algum teste falhar na pipeline do GitHub Actions, o PR é **rejeitado e fechado automaticamente**.
+3. **Padrão de Nomenclatura de Branches**:
+   - `feat/nome-da-funcionalidade` para novos recursos.
+   - `fix/nome-da-correcao` para correções de bugs.
+   - `docs/nome-do-ajuste` para atualizações de documentação.
+   - `chore/nome-da-tarefa` para manutenção interna ou CI/CD.
+4. **Preenchimento do Template de PR**:
+   - Mantenha e preencha as seções obrigatórias de descrição, motivação, tipo de mudança, testes validados e assinatura caso tenha utilizado assistência de agentes de IA.
+
+### 📝 Passo a Passo para Submeter uma Contribuição
+
+1. Faça um **Fork** deste repositório para o seu perfil.
+2. Clone o seu repositório bifurcado localmente:
+   ```powershell
+   git clone https://github.com/SEU-USUARIO/GitCommitMigrator.git
+   cd GitCommitMigrator
+   ```
+3. Crie uma nova branch a partir da **`develop`**:
+   ```powershell
+   git checkout develop
+   git pull origin develop
+   git checkout -b feat/minha-contribuicao
+   ```
+4. Implemente as mudanças mantendo estilo e padrões do projeto.
+5. Valide o build e execute todos os testes localmente:
+   ```powershell
+   dotnet build GitCommitMigration.slnx
+   dotnet test GitCommitMigration.slnx
+   ```
+6. Faça commit das alterações e envie para o seu fork:
+   ```powershell
+   git add .
+   git commit -m "feat: implementa nova melhoria no extrator"
+   git push -u origin feat/minha-contribuicao
+   ```
+7. Abra o **Pull Request** no GitHub selecionando a branch de base **`develop`** (nunca `main`).
+
+---
+
+## 👥 Contribuidores
+
+Agradecemos imensamente a todas as pessoas que dedicam seu tempo para construir e aprimorar este utilitário!
+
+<p align="center">
+  <a href="https://github.com/CesarOvies/GitCommitMigrator/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=CesarOvies/GitCommitMigrator" alt="Contribuidores do Git Commit Migrator" />
+  </a>
+</p>
 
 ---
 
