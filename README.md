@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Migrator/Assets/logo.png" alt="Git Commit Migrator Logo" width="160" />
+</p>
+
 # Git Commit Migrator
 
 ![.NET 8.0](https://img.shields.io/badge/.NET-8.0--windows-512BD4?logo=dotnet)
