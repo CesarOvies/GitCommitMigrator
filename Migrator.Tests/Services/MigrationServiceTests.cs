@@ -85,6 +85,32 @@ public sealed class MigrationServiceTests : IDisposable
     }
 
     [Fact]
+    public void ReconstructHistory_IgnoresNestedGitReposAndUnrelatedFilesInTargetTempPath()
+    {
+        string targetPath = Path.Combine(_tempRoot, "target-with-nested-repo");
+        string nestedRepoPath = Path.Combine(targetPath, "M3", "Rep001");
+        Repository.Init(nestedRepoPath);
+        File.WriteAllText(Path.Combine(nestedRepoPath, "file.txt"), "nested content");
+        File.WriteAllText(Path.Combine(targetPath, "unrelated.txt"), "should not be staged");
+
+        List<CommitMetadata> commitsToMigrate =
+        [
+            new CommitMetadata { Message = "feat: ghost commit", When = new DateTimeOffset(2024, 5, 1, 10, 0, 0, TimeSpan.Zero) }
+        ];
+
+        MigrationService.ReconstructHistory(
+            targetPath,
+            commitsToMigrate,
+            "New Author",
+            "new.author@personal.com");
+
+        using Repository targetRepo = new(targetPath);
+        Assert.Single(targetRepo.Head.Tip.Tree);
+        Assert.NotNull(targetRepo.Head.Tip.Tree["MIGRATION_INFO.md"]);
+        Assert.Null(targetRepo.Head.Tip.Tree["unrelated.txt"]);
+    }
+
+    [Fact]
     public void RunMigration_EndToEnd_ExtractsReconstructsAndPushesToBareRemote()
     {
         string sourcePath = Path.Combine(_tempRoot, "e2e-source");
@@ -99,6 +125,7 @@ public sealed class MigrationServiceTests : IDisposable
         using (Repository sourceRepo = new(sourcePath))
         {
             CommitEmpty(sourceRepo, "feat: migrated commit", "Corp User", "corp@work.com", originalWhen);
+            CommitEmpty(sourceRepo, "chore: other user commit", "Other User", "other@work.com", originalWhen.AddHours(1));
         }
 
         RunMigrationRequest request = new()
@@ -112,7 +139,7 @@ public sealed class MigrationServiceTests : IDisposable
             TargetPatToken = "dummy-pat"
         };
 
-        MigrationService.RunMigration(request);
+        string logFilePath = MigrationService.RunMigration(request, logDirectoryPath: _tempRoot);
 
         using Repository bareRepo = new(remoteBarePath);
         Branch? mainBranch = bareRepo.Branches["main"];
@@ -131,6 +158,17 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal("Personal User", pushedCommits[1].Author.Name);
         Assert.Equal("personal@home.com", pushedCommits[1].Author.Email);
         Assert.Equal(originalWhen, pushedCommits[1].Author.When);
+
+        Assert.False(Directory.Exists(Path.Combine(targetTempPath, ".git")));
+        Assert.False(File.Exists(Path.Combine(targetTempPath, "MIGRATION_INFO.md")));
+
+        Assert.True(File.Exists(logFilePath));
+        Assert.Matches(@"^migration_\d{8}_\d{4}\.log$", Path.GetFileName(logFilePath));
+        string logContent = File.ReadAllText(logFilePath);
+        Assert.Contains("Commits encontrados na origem: 2", logContent);
+        Assert.Contains("Commits descartados/limpos pelo filtro: 1", logContent);
+        Assert.Contains("Commits migrados (ghost commits): 1", logContent);
+        Assert.Contains(".git removido: Sim, MIGRATION_INFO.md removido: Sim", logContent);
     }
 
     [Fact]
