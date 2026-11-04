@@ -397,6 +397,97 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Null(bareRepo.Branches["main"]);
     }
 
+    [Fact]
+    public void RunMigration_WhenRemoteAlreadyHasHistory_AppendsWithoutForcePush_AndSkipsAlreadyMigratedCommits()
+    {
+        string sourcePath = Path.Combine(_tempRoot, "existing-source");
+        string seedPath = Path.Combine(_tempRoot, "existing-seed");
+        string remoteBarePath = Path.Combine(_tempRoot, "existing-remote.git");
+        Repository.Init(sourcePath);
+        Repository.Init(remoteBarePath, isBare: true);
+
+        DateTimeOffset when = new(2024, 7, 1, 10, 0, 0, TimeSpan.Zero);
+        using (Repository sourceRepo = new(sourcePath))
+        {
+            CommitEmpty(sourceRepo, "feat: work", "Corp User", "corp@work.com", when);
+        }
+
+        // Remote created with its own commit (e.g. README) -> previously "cannot push because a reference ... contains commits that are not present locally"
+        Repository.Init(seedPath);
+        using (Repository seedRepo = new(seedPath))
+        {
+            File.WriteAllText(Path.Combine(seedPath, "README.md"), "remote readme");
+            Commands.Stage(seedRepo, "README.md");
+            Signature sig = new("Remote", "remote@home.com", when.AddDays(-10));
+            seedRepo.Commit("Add README", sig, sig);
+            if (seedRepo.Head.FriendlyName != "main")
+            {
+                seedRepo.Branches.Rename(seedRepo.Head, "main");
+            }
+            seedRepo.Network.Remotes.Add("origin", remoteBarePath);
+            seedRepo.Network.Push(seedRepo.Network.Remotes["origin"], "refs/heads/main");
+        }
+
+        RunMigrationRequest request = new()
+        {
+            SourceRepoPath = sourcePath,
+            TargetRemoteUrl = remoteBarePath,
+            FilterOriginalEmail = "corp@work.com",
+            NewAuthorName = "Personal User",
+            NewAuthorEmail = "personal@home.com",
+            TargetPatToken = "dummy-pat"
+        };
+
+        MigrationService.RunMigration(request, logDirectoryPath: Path.Combine(_tempRoot, "existing-exec-1"));
+        MigrationService.RunMigration(request, logDirectoryPath: Path.Combine(_tempRoot, "existing-exec-2"));
+
+        using Repository bareRepo = new(remoteBarePath);
+        List<Commit> pushed = bareRepo.Commits
+            .QueryBy(new CommitFilter
+            {
+                IncludeReachableFrom = bareRepo.Branches["main"],
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Reverse
+            })
+            .ToList();
+
+        Assert.Equal(2, pushed.Count);
+        Assert.Equal("Add README\n", pushed[0].Message);
+        Assert.Equal("feat: work\n", pushed[1].Message);
+        Assert.Equal("personal@home.com", pushed[1].Author.Email);
+        Assert.Equal(when, pushed[1].Author.When);
+        Assert.NotNull(pushed[1].Tree["README.md"]);
+    }
+
+    [Fact]
+    public void ErrorLogService_WritesStackTrace_AndEncryptsSensitiveData()
+    {
+        string logDir = Path.Combine(_tempRoot, "error-logs");
+        Exception ex;
+        try
+        {
+            throw new InvalidOperationException("push failed for ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123 at https://user:secret-pass@github.com/x.git by corp@work.com using my-pat-token");
+        }
+        catch (Exception caught)
+        {
+            ex = caught;
+        }
+
+        string? logPath = ErrorLogService.LogException(ex, "Test", ["my-pat-token"], logDir);
+
+        Assert.NotNull(logPath);
+        string content = File.ReadAllText(logPath);
+        Assert.Contains("InvalidOperationException", content);
+        Assert.Contains(nameof(ErrorLogService_WritesStackTrace_AndEncryptsSensitiveData), content);
+        Assert.DoesNotContain("my-pat-token", content);
+        Assert.DoesNotContain("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123", content);
+        Assert.DoesNotContain("secret-pass", content);
+        Assert.DoesNotContain("corp@work.com", content);
+
+        string token = System.Text.RegularExpressions.Regex.Match(content, @"\[ENC:[^\]]+\]").Value;
+        Assert.False(string.IsNullOrEmpty(token));
+        Assert.Contains(ErrorLogService.Decrypt(token), new[] { "ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123", "user:secret-pass", "corp@work.com", "my-pat-token" });
+    }
+
     private sealed class SynchronousProgress<T>(Action<T> handler) : IProgress<T>
     {
         public void Report(T value) => handler(value);
