@@ -48,7 +48,19 @@ public sealed record UiTranslations(
     string ErrNewNameEmpty,
     string ErrNewEmailEmpty,
     string ErrNewEmailInvalid,
-    string ErrPatEmpty);
+    string ErrPatEmpty,
+    string ImportConfigButton,
+    string ExportConfigButton,
+    string ImportDialogTitle,
+    string ExportDialogTitle,
+    string ConfigFileFilter,
+    string ExportSuccessMessage,
+    string ImportErrorMessage,
+    string ExportErrorMessage,
+    string StatusExtractingCommits,
+    string StatusReconstructingHistory,
+    string StatusPushingToRemote,
+    string StatusCompleted);
 
 public static class LocalizationService
 {
@@ -93,7 +105,19 @@ public static class LocalizationService
             ErrNewNameEmpty: "Informe o nome do novo autor.",
             ErrNewEmailEmpty: "Informe o e-mail do novo autor.",
             ErrNewEmailInvalid: "Informe um endereço de e-mail válido para o novo autor (ex: voce@email.com).",
-            ErrPatEmpty: "Informe o Personal Access Token (PAT) para autenticar o push."),
+            ErrPatEmpty: "Informe o Personal Access Token (PAT) para autenticar o push.",
+            ImportConfigButton: "Importar Config.",
+            ExportConfigButton: "Exportar Config.",
+            ImportDialogTitle: "Importar configurações de migração",
+            ExportDialogTitle: "Exportar configurações de migração",
+            ConfigFileFilter: "Arquivos JSON (*.json)|*.json|Todos os arquivos (*.*)|*.*",
+            ExportSuccessMessage: "Configurações exportadas com sucesso!",
+            ImportErrorMessage: "Erro ao importar configurações:",
+            ExportErrorMessage: "Erro ao exportar configurações:",
+            StatusExtractingCommits: "Extraindo commits do repositório de origem...",
+            StatusReconstructingHistory: "Reconstruindo histórico ({0}/{1} commits)...",
+            StatusPushingToRemote: "Enviando histórico para o repositório remoto...",
+            StatusCompleted: "Migração concluída!"),
 
         [AppLanguage.EnUs] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -134,7 +158,19 @@ public static class LocalizationService
             ErrNewNameEmpty: "Enter the new author name.",
             ErrNewEmailEmpty: "Enter the new author email.",
             ErrNewEmailInvalid: "Enter a valid email address for the new author (e.g. you@email.com).",
-            ErrPatEmpty: "Enter the Personal Access Token (PAT) to authenticate push."),
+            ErrPatEmpty: "Enter the Personal Access Token (PAT) to authenticate push.",
+            ImportConfigButton: "Import Config",
+            ExportConfigButton: "Export Config",
+            ImportDialogTitle: "Import migration configuration",
+            ExportDialogTitle: "Export migration configuration",
+            ConfigFileFilter: "JSON Files (*.json)|*.json|All Files (*.*)|*.*",
+            ExportSuccessMessage: "Configuration exported successfully!",
+            ImportErrorMessage: "Error importing configuration:",
+            ExportErrorMessage: "Error exporting configuration:",
+            StatusExtractingCommits: "Extracting commits from source repository...",
+            StatusReconstructingHistory: "Reconstructing history ({0}/{1} commits)...",
+            StatusPushingToRemote: "Pushing history to remote repository...",
+            StatusCompleted: "Migration completed!"),
 
         [AppLanguage.Es] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -175,9 +211,20 @@ public static class LocalizationService
             ErrNewNameEmpty: "Ingrese el nombre del nuevo autor.",
             ErrNewEmailEmpty: "Ingrese el correo del nuevo autor.",
             ErrNewEmailInvalid: "Ingrese una dirección de correo válida para el nuevo autor (ej: tu@correo.com).",
-            ErrPatEmpty: "Ingrese el Personal Access Token (PAT) para autenticar el push.")
+            ErrPatEmpty: "Ingrese el Personal Access Token (PAT) para autenticar el push.",
+            ImportConfigButton: "Importar Config.",
+            ExportConfigButton: "Exportar Config.",
+            ImportDialogTitle: "Importar configuración de migración",
+            ExportDialogTitle: "Exportar configuración de migración",
+            ConfigFileFilter: "Archivos JSON (*.json)|*.json|Todos los archivos (*.*)|*.*",
+            ExportSuccessMessage: "¡Configuración exportada con éxito!",
+            ImportErrorMessage: "Error al importar la configuración:",
+            ExportErrorMessage: "Error al exportar la configuración:",
+            StatusExtractingCommits: "Extrayendo commits del repositorio de origen...",
+            StatusReconstructingHistory: "Reconstruyendo historial ({0}/{1} commits)...",
+            StatusPushingToRemote: "Enviando historial al repositorio remoto...",
+            StatusCompleted: "¡Migración completada!")
     };
 
     public static UiTranslations Get(AppLanguage language) => Translations[language];
 }
-

@@ -85,7 +85,7 @@ public sealed class MigrationServiceTests : IDisposable
     }
 
     [Fact]
-    public void RunMigration_EndToEnd_ExtractsReconstructsAndPushesToBareRemote()
+    public void RunMigration_EndToEnd_ExtractsReconstructsAndPushesToBareRemote_AndReportsProgress()
     {
         string sourcePath = Path.Combine(_tempRoot, "e2e-source");
         string targetTempPath = Path.Combine(_tempRoot, "e2e-target-temp");
@@ -112,7 +112,16 @@ public sealed class MigrationServiceTests : IDisposable
             TargetPatToken = "dummy-pat"
         };
 
-        MigrationService.RunMigration(request);
+        List<MigrationProgress> progressReports = new();
+        SynchronousProgress<MigrationProgress> progress = new(progressReports.Add);
+
+        MigrationService.RunMigration(request, progress, AppLanguage.PtBr);
+
+        Assert.NotEmpty(progressReports);
+        Assert.Equal(5, progressReports.First().Percentage);
+        Assert.Equal(100, progressReports.Last().Percentage);
+        Assert.Equal("Migração concluída!", progressReports.Last().StatusMessage);
+        Assert.True(progressReports.Zip(progressReports.Skip(1)).All(pair => pair.Second.Percentage >= pair.First.Percentage));
 
         using Repository bareRepo = new(remoteBarePath);
         Branch? mainBranch = bareRepo.Branches["main"];
@@ -131,6 +140,35 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal("Personal User", pushedCommits[1].Author.Name);
         Assert.Equal("personal@home.com", pushedCommits[1].Author.Email);
         Assert.Equal(originalWhen, pushedCommits[1].Author.When);
+    }
+
+    [Fact]
+    public void ExportAndImportConfiguration_RoundTripsAllRequestFields()
+    {
+        string configPath = Path.Combine(_tempRoot, "migration-config.json");
+        RunMigrationRequest original = new()
+        {
+            SourceRepoPath = @"C:\Repos\Source",
+            TargetLocalTempPath = @"C:\Temp\Target",
+            TargetRemoteUrl = "https://github.com/user/target.git",
+            FilterOriginalEmail = "old@company.com",
+            NewAuthorName = "New Dev",
+            NewAuthorEmail = "new@personal.com",
+            TargetPatToken = "ghp_secret123"
+        };
+
+        MigrationService.ExportConfiguration(original, configPath);
+        Assert.True(File.Exists(configPath));
+
+        RunMigrationRequest imported = MigrationService.ImportConfiguration(configPath);
+
+        Assert.Equal(original.SourceRepoPath, imported.SourceRepoPath);
+        Assert.Equal(original.TargetLocalTempPath, imported.TargetLocalTempPath);
+        Assert.Equal(original.TargetRemoteUrl, imported.TargetRemoteUrl);
+        Assert.Equal(original.FilterOriginalEmail, imported.FilterOriginalEmail);
+        Assert.Equal(original.NewAuthorName, imported.NewAuthorName);
+        Assert.Equal(original.NewAuthorEmail, imported.NewAuthorEmail);
+        Assert.Equal(original.TargetPatToken, imported.TargetPatToken);
     }
 
     [Fact]
@@ -203,6 +241,11 @@ public sealed class MigrationServiceTests : IDisposable
         Dictionary<string, string> errors = MigrationService.ValidateRequest(emptyRequest, language);
 
         Assert.Equal(expectedError, errors[nameof(RunMigrationRequest.NewAuthorName)]);
+    }
+
+    private sealed class SynchronousProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        public void Report(T value) => handler(value);
     }
 
     private static void CommitEmpty(Repository repo, string message, string name, string email, DateTimeOffset when)
