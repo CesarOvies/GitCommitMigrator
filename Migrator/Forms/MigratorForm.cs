@@ -35,8 +35,8 @@ public class MigratorForm : Form
     private readonly Button btnExportConfig;
     private readonly Label lblSourceRepo;
     private readonly TextBox txtSourceRepo;
-    private readonly Label lblLocalTemp;
-    private readonly TextBox txtLocalTemp;
+    private readonly Label lblSourcePatToken;
+    private readonly TextBox txtSourcePatToken;
     private readonly Label lblRemoteUrl;
     private readonly TextBox txtRemoteUrl;
     private readonly Label lblOriginalEmail;
@@ -116,7 +116,8 @@ public class MigratorForm : Form
         panel.Controls.Add(configRow);
 
         (lblSourceRepo, txtSourceRepo) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).SourceRepoBrowseTitle);
-        (lblLocalTemp, txtLocalTemp) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).LocalTempBrowseTitle);
+        (lblSourcePatToken, txtSourcePatToken) = AddField(panel);
+        txtSourcePatToken.PasswordChar = '•';
         (lblRemoteUrl, txtRemoteUrl) = AddField(panel);
         (lblOriginalEmail, txtOriginalEmail) = AddField(panel);
         (lblNewName, txtNewName) = AddField(panel);
@@ -359,7 +360,7 @@ public class MigratorForm : Form
     private void ApplyRequestToFields(RunMigrationRequest request)
     {
         txtSourceRepo.Text = request.SourceRepoPath ?? string.Empty;
-        txtLocalTemp.Text = request.TargetLocalTempPath ?? string.Empty;
+        txtSourcePatToken.Text = request.SourcePatToken ?? string.Empty;
         txtRemoteUrl.Text = request.TargetRemoteUrl ?? string.Empty;
         txtOriginalEmail.Text = request.FilterOriginalEmail ?? string.Empty;
         txtNewName.Text = request.NewAuthorName ?? string.Empty;
@@ -389,8 +390,8 @@ public class MigratorForm : Form
         lblSourceRepo.Text = t.SourceRepoLabel;
         txtSourceRepo.PlaceholderText = t.SourceRepoPlaceholder;
 
-        lblLocalTemp.Text = t.LocalTempLabel;
-        txtLocalTemp.PlaceholderText = t.LocalTempPlaceholder;
+        lblSourcePatToken.Text = t.SourcePatTokenLabel;
+        txtSourcePatToken.PlaceholderText = t.SourcePatTokenPlaceholder;
 
         lblRemoteUrl.Text = t.RemoteUrlLabel;
         txtRemoteUrl.PlaceholderText = t.RemoteUrlPlaceholder;
@@ -546,7 +547,7 @@ public class MigratorForm : Form
     private RunMigrationRequest BuildRequest() => new()
     {
         SourceRepoPath = txtSourceRepo.Text,
-        TargetLocalTempPath = txtLocalTemp.Text,
+        SourcePatToken = txtSourcePatToken.Text,
         TargetRemoteUrl = txtRemoteUrl.Text,
         FilterOriginalEmail = txtOriginalEmail.Text,
         NewAuthorName = txtNewName.Text,
@@ -564,7 +565,7 @@ public class MigratorForm : Form
         var fieldMap = new Dictionary<string, Control>
         {
             [nameof(RunMigrationRequest.SourceRepoPath)] = (Control?)txtSourceRepo.Tag ?? txtSourceRepo,
-            [nameof(RunMigrationRequest.TargetLocalTempPath)] = (Control?)txtLocalTemp.Tag ?? txtLocalTemp,
+            [nameof(RunMigrationRequest.SourcePatToken)] = (Control?)txtSourcePatToken.Tag ?? txtSourcePatToken,
             [nameof(RunMigrationRequest.TargetRemoteUrl)] = (Control?)txtRemoteUrl.Tag ?? txtRemoteUrl,
             [nameof(RunMigrationRequest.FilterOriginalEmail)] = (Control?)txtOriginalEmail.Tag ?? txtOriginalEmail,
             [nameof(RunMigrationRequest.NewAuthorName)] = (Control?)txtNewName.Tag ?? txtNewName,

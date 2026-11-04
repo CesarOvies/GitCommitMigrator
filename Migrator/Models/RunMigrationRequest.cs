@@ -4,7 +4,7 @@ public class RunMigrationRequest
 {
     public string SourceRepoPath { get; set; } = string.Empty;
 
-    public string TargetLocalTempPath { get; set; } = string.Empty;
+    public string SourcePatToken { get; set; } = string.Empty;
 
     public string TargetRemoteUrl { get; set; } = string.Empty;
 
@@ -16,4 +16,3 @@ public class RunMigrationRequest
 
     public string TargetPatToken { get; set; } = string.Empty;
 }
-

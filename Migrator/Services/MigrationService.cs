@@ -46,21 +46,6 @@ public static class MigrationService
             errors[nameof(RunMigrationRequest.SourceRepoPath)] = t.ErrSourceInvalid;
         }
 
-        string targetTemp = request.TargetLocalTempPath?.Trim() ?? string.Empty;
-        if (string.IsNullOrEmpty(targetTemp))
-        {
-            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = t.ErrTargetTempEmpty;
-        }
-        else if (!IsValidLocalPath(targetTemp))
-        {
-            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = t.ErrTargetTempInvalid;
-        }
-        else if (!string.IsNullOrEmpty(source) && !IsRemoteUrl(source) && IsValidLocalPath(source) &&
-                 string.Equals(Path.GetFullPath(source).TrimEnd('\\', '/'), Path.GetFullPath(targetTemp).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
-        {
-            errors[nameof(RunMigrationRequest.TargetLocalTempPath)] = t.ErrTargetTempSameAsSource;
-        }
-
         string remoteUrl = request.TargetRemoteUrl?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(remoteUrl))
         {
@@ -125,24 +110,6 @@ public static class MigrationService
         return value.TrimStart().StartsWith("git@", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsValidLocalPath(string path)
-    {
-        try
-        {
-            if (path.IndexOfAny(Path.GetInvalidPathChars()) >= 0 || !Path.IsPathFullyQualified(path))
-            {
-                return false;
-            }
-
-            _ = Path.GetFullPath(path);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
     private static bool IsValidEmail(string email)
     {
         return MailAddress.TryCreate(email, out MailAddress? addr) &&
@@ -164,23 +131,25 @@ public static class MigrationService
 
         UiTranslations t = LocalizationService.Get(language);
         DateTimeOffset startedAt = DateTimeOffset.Now;
+        string workingDirectory = logDirectoryPath ?? AppContext.BaseDirectory;
         string source = request.SourceRepoPath.Trim();
-        string targetTemp = request.TargetLocalTempPath.Trim();
+        string sourcePat = request.SourcePatToken?.Trim() ?? string.Empty;
         string remoteUrl = request.TargetRemoteUrl.Trim();
         string originalEmail = request.FilterOriginalEmail.Trim();
         string newName = request.NewAuthorName.Trim();
         string newEmail = request.NewAuthorEmail.Trim();
-        string pat = request.TargetPatToken.Trim();
+        string targetPat = request.TargetPatToken.Trim();
+        string effectiveSourcePat = !string.IsNullOrEmpty(sourcePat) ? sourcePat : targetPat;
 
         progress?.Report(new MigrationProgress(5, t.StatusExtractingCommits));
-        (List<CommitMetadata> commits, int totalFound) = ExtractCommitsWithStats(source, originalEmail, pat);
+        (List<CommitMetadata> commits, int totalFound) = ExtractCommitsWithStats(source, originalEmail, effectiveSourcePat);
         (bool gitRemoved, bool mdRemoved) cleanupResult = (false, false);
 
         try
         {
             progress?.Report(new MigrationProgress(20, string.Format(t.StatusReconstructingHistory, 0, commits.Count)));
             ReconstructHistory(
-                targetTemp,
+                workingDirectory,
                 commits,
                 newName,
                 newEmail,
@@ -191,16 +160,16 @@ public static class MigrationService
                 });
 
             progress?.Report(new MigrationProgress(85, t.StatusPushingToRemote));
-            PushToRemote(targetTemp, remoteUrl, pat);
+            PushToRemote(workingDirectory, remoteUrl, targetPat);
         }
         finally
         {
-            cleanupResult = CleanupTargetArtifacts(targetTemp);
+            cleanupResult = CleanupTargetArtifacts(workingDirectory);
         }
 
         DateTimeOffset finishedAt = DateTimeOffset.Now;
         string logFilePath = WriteMigrationLog(
-            logDirectoryPath ?? AppContext.BaseDirectory,
+            workingDirectory,
             startedAt,
             finishedAt,
             request,
@@ -355,7 +324,7 @@ public static class MigrationService
             $"Término: {finishedAt:yyyy-MM-dd HH:mm:ss zzz}",
             $"Duração: {duration.TotalSeconds:F2}s",
             $"Repositório de Origem: {request.SourceRepoPath.Trim()}",
-            $"Pasta Temporária Local: {request.TargetLocalTempPath.Trim()}",
+            $"Pasta de Execução Local: {logDirectory.Trim()}",
             $"Repositório Remoto de Destino: {request.TargetRemoteUrl.Trim()}",
             $"E-mail Original Filtrado: {request.FilterOriginalEmail.Trim()}",
             $"Novo Autor: {request.NewAuthorName.Trim()} <{request.NewAuthorEmail.Trim()}>",

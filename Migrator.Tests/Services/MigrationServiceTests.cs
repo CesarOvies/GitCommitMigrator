@@ -114,9 +114,10 @@ public sealed class MigrationServiceTests : IDisposable
     public void RunMigration_EndToEnd_ExtractsReconstructsAndPushesToBareRemote_AndReportsProgress()
     {
         string sourcePath = Path.Combine(_tempRoot, "e2e-source");
-        string targetTempPath = Path.Combine(_tempRoot, "e2e-target-temp");
+        string executionDir = Path.Combine(_tempRoot, "e2e-execution-dir");
         string remoteBarePath = Path.Combine(_tempRoot, "e2e-remote.git");
 
+        Directory.CreateDirectory(executionDir);
         Repository.Init(sourcePath);
         Repository.Init(remoteBarePath, isBare: true);
 
@@ -131,7 +132,6 @@ public sealed class MigrationServiceTests : IDisposable
         RunMigrationRequest request = new()
         {
             SourceRepoPath = sourcePath,
-            TargetLocalTempPath = targetTempPath,
             TargetRemoteUrl = remoteBarePath,
             FilterOriginalEmail = "corp@work.com",
             NewAuthorName = "Personal User",
@@ -142,7 +142,7 @@ public sealed class MigrationServiceTests : IDisposable
         List<MigrationProgress> progressReports = new();
         SynchronousProgress<MigrationProgress> progress = new(progressReports.Add);
 
-        string logFilePath = MigrationService.RunMigration(request, logDirectoryPath: _tempRoot, progress: progress, language: AppLanguage.PtBr);
+        string logFilePath = MigrationService.RunMigration(request, logDirectoryPath: executionDir, progress: progress, language: AppLanguage.PtBr);
 
         Assert.NotEmpty(progressReports);
         Assert.Equal(5, progressReports.First().Percentage);
@@ -168,8 +168,8 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal("personal@home.com", pushedCommits[1].Author.Email);
         Assert.Equal(originalWhen, pushedCommits[1].Author.When);
 
-        Assert.False(Directory.Exists(Path.Combine(targetTempPath, ".git")));
-        Assert.False(File.Exists(Path.Combine(targetTempPath, "MIGRATION_INFO.md")));
+        Assert.False(Directory.Exists(Path.Combine(executionDir, ".git")));
+        Assert.False(File.Exists(Path.Combine(executionDir, "MIGRATION_INFO.md")));
 
         Assert.True(File.Exists(logFilePath));
         Assert.Matches(@"^migration_\d{8}_\d{4}\.log$", Path.GetFileName(logFilePath));
@@ -187,7 +187,7 @@ public sealed class MigrationServiceTests : IDisposable
         RunMigrationRequest original = new()
         {
             SourceRepoPath = @"C:\Repos\Source",
-            TargetLocalTempPath = @"C:\Temp\Target",
+            SourcePatToken = "ghp_source_secret456",
             TargetRemoteUrl = "https://github.com/user/target.git",
             FilterOriginalEmail = "old@company.com",
             NewAuthorName = "New Dev",
@@ -201,7 +201,7 @@ public sealed class MigrationServiceTests : IDisposable
         RunMigrationRequest imported = MigrationService.ImportConfiguration(configPath);
 
         Assert.Equal(original.SourceRepoPath, imported.SourceRepoPath);
-        Assert.Equal(original.TargetLocalTempPath, imported.TargetLocalTempPath);
+        Assert.Equal(original.SourcePatToken, imported.SourcePatToken);
         Assert.Equal(original.TargetRemoteUrl, imported.TargetRemoteUrl);
         Assert.Equal(original.FilterOriginalEmail, imported.FilterOriginalEmail);
         Assert.Equal(original.NewAuthorName, imported.NewAuthorName);
@@ -215,14 +215,14 @@ public sealed class MigrationServiceTests : IDisposable
         RunMigrationRequest emptyRequest = new();
         Dictionary<string, string> errors = MigrationService.ValidateRequest(emptyRequest);
 
-        Assert.Equal(7, errors.Count);
+        Assert.Equal(6, errors.Count);
         Assert.Contains(nameof(RunMigrationRequest.SourceRepoPath), errors.Keys);
-        Assert.Contains(nameof(RunMigrationRequest.TargetLocalTempPath), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.TargetRemoteUrl), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.FilterOriginalEmail), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.NewAuthorName), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.NewAuthorEmail), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.TargetPatToken), errors.Keys);
+        Assert.DoesNotContain(nameof(RunMigrationRequest.SourcePatToken), errors.Keys);
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public sealed class MigrationServiceTests : IDisposable
         RunMigrationRequest validRequest = new()
         {
             SourceRepoPath = "https://github.com/org/source-repo.git",
-            TargetLocalTempPath = Path.Combine(_tempRoot, "temp-target"),
+            SourcePatToken = "ghp_optional_source_token",
             TargetRemoteUrl = "https://github.com/user/target-repo.git",
             FilterOriginalEmail = "dev@company.com",
             NewAuthorName = "Dev Name",
@@ -250,7 +250,6 @@ public sealed class MigrationServiceTests : IDisposable
         RunMigrationRequest invalidRequest = new()
         {
             SourceRepoPath = Path.Combine(_tempRoot, "not-a-git-repo"),
-            TargetLocalTempPath = "relative/path",
             TargetRemoteUrl = "not-a-url-or-repo",
             FilterOriginalEmail = "invalid-email",
             NewAuthorName = "Valid Name",
@@ -261,7 +260,6 @@ public sealed class MigrationServiceTests : IDisposable
         Dictionary<string, string> errors = MigrationService.ValidateRequest(invalidRequest);
 
         Assert.Contains(nameof(RunMigrationRequest.SourceRepoPath), errors.Keys);
-        Assert.Contains(nameof(RunMigrationRequest.TargetLocalTempPath), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.TargetRemoteUrl), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.FilterOriginalEmail), errors.Keys);
         Assert.Contains(nameof(RunMigrationRequest.NewAuthorEmail), errors.Keys);
