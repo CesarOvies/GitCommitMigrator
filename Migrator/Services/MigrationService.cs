@@ -117,11 +117,12 @@ public static class MigrationService
                addr.Host.Contains('.');
     }
 
-    public static string RunMigration(
+    public static string? RunMigration(
         RunMigrationRequest request,
         string? logDirectoryPath = null,
         IProgress<MigrationProgress>? progress = null,
-        AppLanguage language = AppLanguage.PtBr)
+        AppLanguage language = AppLanguage.PtBr,
+        Func<IReadOnlyList<CommitMetadata>, List<CommitMetadata>?>? selectCommitsCallback = null)
     {
         Dictionary<string, string> errors = ValidateRequest(request, language);
         if (errors.Count > 0)
@@ -143,6 +144,17 @@ public static class MigrationService
 
         progress?.Report(new MigrationProgress(5, t.StatusExtractingCommits));
         (List<CommitMetadata> commits, int totalFound) = ExtractCommitsWithStats(source, originalEmail, effectiveSourcePat);
+
+        if (request.UseAdvancedSettings && selectCommitsCallback is not null)
+        {
+            List<CommitMetadata>? selected = selectCommitsCallback(commits);
+            if (selected is null)
+            {
+                return null;
+            }
+            commits = selected;
+        }
+
         (bool gitRemoved, bool mdRemoved) cleanupResult = (false, false);
 
         try
@@ -184,6 +196,25 @@ public static class MigrationService
 
     public static List<CommitMetadata> ExtractCommits(string sourceRepoPath, string filterOriginalEmail, string? patToken = null)
         => ExtractCommitsWithStats(sourceRepoPath, filterOriginalEmail, patToken).Commits;
+
+    public static List<CommitMetadata> FilterCommitsByPeriod(
+        IEnumerable<CommitMetadata> commits,
+        DateTime startDate,
+        DateTime endDate)
+    {
+        ArgumentNullException.ThrowIfNull(commits);
+        DateTime start = startDate.Date;
+        DateTime end = endDate.Date;
+
+        return commits
+            .Where(c =>
+            {
+                DateTime commitDate = c.When.LocalDateTime.Date;
+                return commitDate >= start && commitDate <= end;
+            })
+            .OrderBy(c => c.When)
+            .ToList();
+    }
 
     private static (List<CommitMetadata> Commits, int TotalFound) ExtractCommitsWithStats(string sourceRepoPath, string filterOriginalEmail, string? patToken = null)
     {
