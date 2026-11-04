@@ -187,6 +187,16 @@ O repositório implementa padrões de entrega contínua com validação automati
 
 ---
 
+## ⚖️ Isenção de Responsabilidade Legal e Técnica (Disclaimer)
+
+Esta aplicação foi desenvolvida exclusivamente como utilitário técnico para preservação de métricas históricas individuais via commits vazios (*ghost commits*). Ao baixar, compilar ou executar este software, o usuário concorda expressamente com os seguintes termos:
+
+1. **Custódia e Sigilo de Credenciais**: O usuário é integral e exclusivamente responsável pela geração, armazenamento, guarda, revogação e nível de permissão concedido a qualquer *Personal Access Token* (PAT), chave de acesso, credencial Git ou segredo inserido na ferramenta. O autor e os mantenedores deste projeto **não se responsabilizam** por vazamentos, comprometimento de contas, exposições acidentais decorrentes de estações de trabalho comprometidas, configurações locais inseguras ou uso inadequado de tokens.
+2. **Conformidade Corporativa e Termos de Serviço**: O usuário assume total responsabilidade por garantir que a extração de metadados (como mensagens de commit e cronologia) esteja em estrita conformidade com eventuais Acordos de Não Divulgação (NDAs), políticas de segurança da informação de seus empregadores/clientes e os Termos de Serviço dos provedores de hospedagem Git envolvidos.
+3. **Ausência de Garantias e Isenção de Danos ("AS IS")**: Sob os termos da licença MIT, o software é disponibilizado "no estado em que se encontra", sem garantias explícitas ou implícitas de qualquer natureza. Sob nenhuma circunstância o autor ou mantenedores serão responsabilizados por quaisquer perdas, danos diretos, indiretos, perda de dados ou consequências oriundas do uso indevido, fraudulento ou negligente desta ferramenta.
+
+---
+
 ## 📄 Licença
 
 Distribuído sob a licença **MIT**. Consulte o arquivo [LICENSE](LICENSE) para mais detalhes.
