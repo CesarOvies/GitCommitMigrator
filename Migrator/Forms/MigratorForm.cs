@@ -626,7 +626,7 @@ public class MigratorForm : Form
 
         try
         {
-            await Task.Run(() => MigrationService.RunMigration(request, progressReporter, langSnapshot));
+            await Task.Run(() => MigrationService.RunMigration(request, progress: progressReporter, language: langSnapshot));
 
             t = LocalizationService.Get(currentLanguage);
             UpdateProgressUi(new MigrationProgress(100, t.StatusCompleted));
