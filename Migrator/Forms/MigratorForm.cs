@@ -129,7 +129,7 @@ public class MigratorForm : Form
         chkAdvancedSettings = new CheckBox
         {
             AutoSize = true,
-            MaximumSize = new Size(FieldWidth, 0),
+            Width = FieldWidth,
             Font = labelFont,
             ForeColor = TextPrimary,
             BackColor = BgCanvas,
@@ -279,6 +279,7 @@ public class MigratorForm : Form
     protected override void OnHandleCreated(EventArgs e)
     {
         base.OnHandleCreated(e);
+        AdjustAdvancedCheckboxHeight();
         if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
         {
             int useDarkMode = 1;
@@ -422,7 +423,9 @@ public class MigratorForm : Form
         lblPatToken.Text = t.PatTokenLabel;
         txtPatToken.PlaceholderText = t.PatTokenPlaceholder;
 
+        chkAdvancedSettings.AutoSize = false;
         chkAdvancedSettings.Text = t.UseAdvancedSettingsLabel;
+        AdjustAdvancedCheckboxHeight();
 
         btnMigrate.Text = isProcessing ? t.ProcessingButton : t.MigrateButton;
         lblLanguage.Text = t.LanguageLabel;
@@ -431,6 +434,17 @@ public class MigratorForm : Form
         {
             UpdateErrorProviderIcons(BuildRequest());
         }
+    }
+
+    private void AdjustAdvancedCheckboxHeight()
+    {
+        int availableTextWidth = Math.Max(100, chkAdvancedSettings.Width - 28);
+        Size textSize = TextRenderer.MeasureText(
+            chkAdvancedSettings.Text,
+            chkAdvancedSettings.Font,
+            new Size(availableTextWidth, int.MaxValue),
+            TextFormatFlags.WordBreak);
+        chkAdvancedSettings.Height = Math.Max(24, textSize.Height + 6);
     }
 
     private static (Panel Box, TextBox Input) CreateStyledInputBox(int width)
