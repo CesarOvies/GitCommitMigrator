@@ -15,4 +15,6 @@ public class RunMigrationRequest
     public string NewAuthorEmail { get; set; } = string.Empty;
 
     public string TargetPatToken { get; set; } = string.Empty;
+
+    public bool UseAdvancedSettings { get; set; }
 }

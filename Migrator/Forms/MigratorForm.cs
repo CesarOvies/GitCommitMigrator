@@ -47,6 +47,7 @@ public class MigratorForm : Form
     private readonly TextBox txtNewEmail;
     private readonly Label lblPatToken;
     private readonly TextBox txtPatToken;
+    private readonly CheckBox chkAdvancedSettings;
     private readonly Panel progressSection;
     private readonly Label lblProgressStatus;
     private readonly Label lblProgressPercent;
@@ -124,6 +125,18 @@ public class MigratorForm : Form
         (lblNewEmail, txtNewEmail) = AddField(panel);
         (lblPatToken, txtPatToken) = AddField(panel);
         txtPatToken.PasswordChar = '•';
+
+        chkAdvancedSettings = new CheckBox
+        {
+            AutoSize = true,
+            MaximumSize = new Size(FieldWidth, 0),
+            Font = labelFont,
+            ForeColor = TextPrimary,
+            BackColor = BgCanvas,
+            Margin = new Padding(0, 10, 0, 2),
+            Cursor = Cursors.Hand
+        };
+        panel.Controls.Add(chkAdvancedSettings);
 
         progressSection = new Panel
         {
@@ -366,6 +379,7 @@ public class MigratorForm : Form
         txtNewName.Text = request.NewAuthorName ?? string.Empty;
         txtNewEmail.Text = request.NewAuthorEmail ?? string.Empty;
         txtPatToken.Text = request.TargetPatToken ?? string.Empty;
+        chkAdvancedSettings.Checked = request.UseAdvancedSettings;
         errorProvider.Clear();
         hasActiveErrors = false;
     }
@@ -407,6 +421,8 @@ public class MigratorForm : Form
 
         lblPatToken.Text = t.PatTokenLabel;
         txtPatToken.PlaceholderText = t.PatTokenPlaceholder;
+
+        chkAdvancedSettings.Text = t.UseAdvancedSettingsLabel;
 
         btnMigrate.Text = isProcessing ? t.ProcessingButton : t.MigrateButton;
         lblLanguage.Text = t.LanguageLabel;
@@ -552,7 +568,8 @@ public class MigratorForm : Form
         FilterOriginalEmail = txtOriginalEmail.Text,
         NewAuthorName = txtNewName.Text,
         NewAuthorEmail = txtNewEmail.Text,
-        TargetPatToken = txtPatToken.Text
+        TargetPatToken = txtPatToken.Text,
+        UseAdvancedSettings = chkAdvancedSettings.Checked
     };
 
     private Dictionary<string, string> UpdateErrorProviderIcons(RunMigrationRequest request)
@@ -617,6 +634,7 @@ public class MigratorForm : Form
         isProcessing = true;
         btnImportConfig.Enabled = false;
         btnExportConfig.Enabled = false;
+        chkAdvancedSettings.Enabled = false;
         btnMigrate.Enabled = false;
         btnMigrate.BackColor = BgButtonSubtle;
         btnMigrate.FlatAppearance.BorderColor = BorderSubtle;
@@ -627,9 +645,19 @@ public class MigratorForm : Form
 
         try
         {
-            await Task.Run(() => MigrationService.RunMigration(request, progress: progressReporter, language: langSnapshot));
+            string? logPath = await Task.Run(() => MigrationService.RunMigration(
+                request,
+                progress: progressReporter,
+                language: langSnapshot,
+                selectCommitsCallback: extractedCommits => PromptCommitSelectionOnUiThread(extractedCommits, langSnapshot)));
 
             t = LocalizationService.Get(currentLanguage);
+            if (logPath is null)
+            {
+                UpdateProgressUi(new MigrationProgress(0, t.StatusCanceled));
+                return;
+            }
+
             UpdateProgressUi(new MigrationProgress(100, t.StatusCompleted));
             MessageBox.Show(t.SuccessMessage, t.SuccessTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -643,10 +671,33 @@ public class MigratorForm : Form
             isProcessing = false;
             btnImportConfig.Enabled = true;
             btnExportConfig.Enabled = true;
+            chkAdvancedSettings.Enabled = true;
             btnMigrate.Enabled = true;
             btnMigrate.BackColor = AccentGreen;
             btnMigrate.FlatAppearance.BorderColor = AccentGreenBorder;
             btnMigrate.Text = LocalizationService.Get(currentLanguage).MigrateButton;
         }
+    }
+
+    private List<CommitMetadata>? PromptCommitSelectionOnUiThread(
+        IReadOnlyList<CommitMetadata> extractedCommits,
+        AppLanguage language)
+    {
+        if (InvokeRequired)
+        {
+            return Invoke(new Func<List<CommitMetadata>?>(() => ShowCommitSelectionDialog(extractedCommits, language)));
+        }
+
+        return ShowCommitSelectionDialog(extractedCommits, language);
+    }
+
+    private List<CommitMetadata>? ShowCommitSelectionDialog(
+        IReadOnlyList<CommitMetadata> extractedCommits,
+        AppLanguage language)
+    {
+        using var dialog = new CommitSelectionForm(extractedCommits, language);
+        return dialog.ShowDialog(this) == DialogResult.OK
+            ? dialog.SelectedCommits
+            : null;
     }
 }

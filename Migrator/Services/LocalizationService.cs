@@ -56,7 +56,21 @@ public sealed record UiTranslations(
     string StatusExtractingCommits,
     string StatusReconstructingHistory,
     string StatusPushingToRemote,
-    string StatusCompleted);
+    string StatusCompleted,
+    string UseAdvancedSettingsLabel,
+    string CommitSelectionTitle,
+    string CommitSelectionHeader,
+    string SelectAllCommitsOption,
+    string SelectSingleCommitOption,
+    string SelectByPeriodOption,
+    string PeriodStartDateLabel,
+    string PeriodEndDateLabel,
+    string SelectedCommitsCountLabel,
+    string ConfirmSelectionButton,
+    string CancelSelectionButton,
+    string ErrInvalidPeriodRange,
+    string ErrNoCommitsSelected,
+    string StatusCanceled);
 
 public static class LocalizationService
 {
@@ -109,7 +123,21 @@ public static class LocalizationService
             StatusExtractingCommits: "Extraindo commits do repositório de origem...",
             StatusReconstructingHistory: "Reconstruindo histórico ({0}/{1} commits)...",
             StatusPushingToRemote: "Enviando histórico para o repositório remoto...",
-            StatusCompleted: "Migração concluída!"),
+            StatusCompleted: "Migração concluída!",
+            UseAdvancedSettingsLabel: "Usar configurações avançadas (abre seleção de commits durante a migração)",
+            CommitSelectionTitle: "Configurações Avançadas — Seleção de Commits",
+            CommitSelectionHeader: "{0} commit(s) filtrados encontrados. Escolha como deseja migrar:",
+            SelectAllCommitsOption: "Selecionar todos os commits",
+            SelectSingleCommitOption: "Selecionar apenas 1 commit",
+            SelectByPeriodOption: "Selecionar por período",
+            PeriodStartDateLabel: "Data Inicial:",
+            PeriodEndDateLabel: "Data Final:",
+            SelectedCommitsCountLabel: "Commits selecionados para migração: {0} de {1}",
+            ConfirmSelectionButton: "Confirmar e Migrar",
+            CancelSelectionButton: "Cancelar",
+            ErrInvalidPeriodRange: "A data inicial não pode ser maior que a data final.",
+            ErrNoCommitsSelected: "Nenhum commit encontrado para a seleção informada.",
+            StatusCanceled: "Migração cancelada pelo usuário."),
 
         [AppLanguage.EnUs] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -158,7 +186,21 @@ public static class LocalizationService
             StatusExtractingCommits: "Extracting commits from source repository...",
             StatusReconstructingHistory: "Reconstructing history ({0}/{1} commits)...",
             StatusPushingToRemote: "Pushing history to remote repository...",
-            StatusCompleted: "Migration completed!"),
+            StatusCompleted: "Migration completed!",
+            UseAdvancedSettingsLabel: "Use advanced settings (opens commit selection during migration)",
+            CommitSelectionTitle: "Advanced Settings — Commit Selection",
+            CommitSelectionHeader: "{0} filtered commit(s) found. Choose how to migrate:",
+            SelectAllCommitsOption: "Select all commits",
+            SelectSingleCommitOption: "Select only 1 commit",
+            SelectByPeriodOption: "Select by period",
+            PeriodStartDateLabel: "Start Date:",
+            PeriodEndDateLabel: "End Date:",
+            SelectedCommitsCountLabel: "Commits selected for migration: {0} of {1}",
+            ConfirmSelectionButton: "Confirm & Migrate",
+            CancelSelectionButton: "Cancel",
+            ErrInvalidPeriodRange: "Start date cannot be after end date.",
+            ErrNoCommitsSelected: "No commits found for the selected criteria.",
+            StatusCanceled: "Migration canceled by user."),
 
         [AppLanguage.Es] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -207,7 +249,21 @@ public static class LocalizationService
             StatusExtractingCommits: "Extrayendo commits del repositorio de origen...",
             StatusReconstructingHistory: "Reconstruyendo historial ({0}/{1} commits)...",
             StatusPushingToRemote: "Enviando historial al repositorio remoto...",
-            StatusCompleted: "¡Migración completada!")
+            StatusCompleted: "¡Migración completada!",
+            UseAdvancedSettingsLabel: "Usar configuraciones avanzadas (abre selección de commits durante la migración)",
+            CommitSelectionTitle: "Configuraciones Avanzadas — Selección de Commits",
+            CommitSelectionHeader: "{0} commit(s) filtrados encontrados. Elija cómo migrar:",
+            SelectAllCommitsOption: "Seleccionar todos los commits",
+            SelectSingleCommitOption: "Seleccionar solo 1 commit",
+            SelectByPeriodOption: "Seleccionar por período",
+            PeriodStartDateLabel: "Fecha Inicial:",
+            PeriodEndDateLabel: "Fecha Final:",
+            SelectedCommitsCountLabel: "Commits seleccionados para migración: {0} de {1}",
+            ConfirmSelectionButton: "Confirmar y Migrar",
+            CancelSelectionButton: "Cancelar",
+            ErrInvalidPeriodRange: "La fecha inicial no puede ser mayor que la fecha final.",
+            ErrNoCommitsSelected: "No se encontraron commits para la selección indicada.",
+            StatusCanceled: "Migración cancelada por el usuario.")
     };
 
     public static UiTranslations Get(AppLanguage language) => Translations[language];

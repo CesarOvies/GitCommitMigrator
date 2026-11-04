@@ -142,8 +142,9 @@ public sealed class MigrationServiceTests : IDisposable
         List<MigrationProgress> progressReports = new();
         SynchronousProgress<MigrationProgress> progress = new(progressReports.Add);
 
-        string logFilePath = MigrationService.RunMigration(request, logDirectoryPath: executionDir, progress: progress, language: AppLanguage.PtBr);
+        string? logFilePath = MigrationService.RunMigration(request, logDirectoryPath: executionDir, progress: progress, language: AppLanguage.PtBr);
 
+        Assert.NotNull(logFilePath);
         Assert.NotEmpty(progressReports);
         Assert.Equal(5, progressReports.First().Percentage);
         Assert.Equal(100, progressReports.Last().Percentage);
@@ -192,7 +193,8 @@ public sealed class MigrationServiceTests : IDisposable
             FilterOriginalEmail = "old@company.com",
             NewAuthorName = "New Dev",
             NewAuthorEmail = "new@personal.com",
-            TargetPatToken = "ghp_secret123"
+            TargetPatToken = "ghp_secret123",
+            UseAdvancedSettings = true
         };
 
         MigrationService.ExportConfiguration(original, configPath);
@@ -207,6 +209,7 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal(original.NewAuthorName, imported.NewAuthorName);
         Assert.Equal(original.NewAuthorEmail, imported.NewAuthorEmail);
         Assert.Equal(original.TargetPatToken, imported.TargetPatToken);
+        Assert.Equal(original.UseAdvancedSettings, imported.UseAdvancedSettings);
     }
 
     [Fact]
@@ -277,6 +280,121 @@ public sealed class MigrationServiceTests : IDisposable
         Dictionary<string, string> errors = MigrationService.ValidateRequest(emptyRequest, language);
 
         Assert.Equal(expectedError, errors[nameof(RunMigrationRequest.NewAuthorName)]);
+    }
+
+    [Fact]
+    public void FilterCommitsByPeriod_ReturnsOnlyCommitsWithinInclusiveDateRange()
+    {
+        List<CommitMetadata> commits =
+        [
+            new CommitMetadata { Message = "c1", When = new DateTimeOffset(2024, 1, 10, 8, 0, 0, TimeSpan.Zero) },
+            new CommitMetadata { Message = "c2", When = new DateTimeOffset(2024, 1, 15, 14, 0, 0, TimeSpan.Zero) },
+            new CommitMetadata { Message = "c3", When = new DateTimeOffset(2024, 1, 20, 22, 0, 0, TimeSpan.Zero) }
+        ];
+
+        DateTime start = commits[1].When.LocalDateTime.Date;
+        DateTime end = commits[1].When.LocalDateTime.Date;
+
+        List<CommitMetadata> filtered = MigrationService.FilterCommitsByPeriod(commits, start, end);
+
+        Assert.Single(filtered);
+        Assert.Equal("c2", filtered[0].Message);
+    }
+
+    [Fact]
+    public void RunMigration_WithAdvancedSettingsEnabled_InvokesSelectionCallbackAndMigratesOnlySelected()
+    {
+        string sourcePath = Path.Combine(_tempRoot, "adv-source");
+        string executionDir = Path.Combine(_tempRoot, "adv-execution-dir");
+        string remoteBarePath = Path.Combine(_tempRoot, "adv-remote.git");
+
+        Directory.CreateDirectory(executionDir);
+        Repository.Init(sourcePath);
+        Repository.Init(remoteBarePath, isBare: true);
+
+        DateTimeOffset t1 = new(2024, 6, 10, 10, 0, 0, TimeSpan.Zero);
+        DateTimeOffset t2 = new(2024, 6, 11, 10, 0, 0, TimeSpan.Zero);
+
+        using (Repository sourceRepo = new(sourcePath))
+        {
+            CommitEmpty(sourceRepo, "feat: commit 1", "Corp User", "corp@work.com", t1);
+            CommitEmpty(sourceRepo, "feat: commit 2", "Corp User", "corp@work.com", t2);
+        }
+
+        RunMigrationRequest request = new()
+        {
+            SourceRepoPath = sourcePath,
+            TargetRemoteUrl = remoteBarePath,
+            FilterOriginalEmail = "corp@work.com",
+            NewAuthorName = "Personal User",
+            NewAuthorEmail = "personal@home.com",
+            TargetPatToken = "dummy-pat",
+            UseAdvancedSettings = true
+        };
+
+        bool callbackInvoked = false;
+        string? logFilePath = MigrationService.RunMigration(
+            request,
+            logDirectoryPath: executionDir,
+            selectCommitsCallback: commits =>
+            {
+                callbackInvoked = true;
+                Assert.Equal(2, commits.Count);
+                return [commits[1]];
+            });
+
+        Assert.True(callbackInvoked);
+        Assert.NotNull(logFilePath);
+
+        using Repository bareRepo = new(remoteBarePath);
+        List<Commit> pushedCommits = bareRepo.Commits
+            .QueryBy(new CommitFilter
+            {
+                IncludeReachableFrom = bareRepo.Branches["main"],
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Reverse
+            })
+            .ToList();
+
+        Assert.Equal(2, pushedCommits.Count);
+        Assert.Equal("Initial commit\n", pushedCommits[0].Message);
+        Assert.Equal("feat: commit 2\n", pushedCommits[1].Message);
+    }
+
+    [Fact]
+    public void RunMigration_WithAdvancedSettingsCanceled_ReturnsNullAndDoesNotPush()
+    {
+        string sourcePath = Path.Combine(_tempRoot, "cancel-source");
+        string executionDir = Path.Combine(_tempRoot, "cancel-execution-dir");
+        string remoteBarePath = Path.Combine(_tempRoot, "cancel-remote.git");
+
+        Directory.CreateDirectory(executionDir);
+        Repository.Init(sourcePath);
+        Repository.Init(remoteBarePath, isBare: true);
+
+        using (Repository sourceRepo = new(sourcePath))
+        {
+            CommitEmpty(sourceRepo, "feat: commit 1", "Corp User", "corp@work.com", DateTimeOffset.Now);
+        }
+
+        RunMigrationRequest request = new()
+        {
+            SourceRepoPath = sourcePath,
+            TargetRemoteUrl = remoteBarePath,
+            FilterOriginalEmail = "corp@work.com",
+            NewAuthorName = "Personal User",
+            NewAuthorEmail = "personal@home.com",
+            TargetPatToken = "dummy-pat",
+            UseAdvancedSettings = true
+        };
+
+        string? logFilePath = MigrationService.RunMigration(
+            request,
+            logDirectoryPath: executionDir,
+            selectCommitsCallback: _ => null);
+
+        Assert.Null(logFilePath);
+        using Repository bareRepo = new(remoteBarePath);
+        Assert.Null(bareRepo.Branches["main"]);
     }
 
     private sealed class SynchronousProgress<T>(Action<T> handler) : IProgress<T>
