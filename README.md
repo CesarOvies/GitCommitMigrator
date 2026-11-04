@@ -89,10 +89,9 @@ O binário `Git.Commit.Migrator.exe` será gerado em `Migrator/bin/Release/net8.
 O repositório conta com pipelines automatizados em `.github/workflows/`:
 1. **Regra de PR e Testes (`ci.yml`)**:
    - Todo PR de feature/fix deve apontar para `develop`.
-   - A branch `main` aceita exclusivamente PRs originados de `develop`.
+   - A branch `main` não aceita commits/push diretos: só recebe alterações via PR originado de `develop`.
    - Compila a solução e executa a suíte `Migrator.Tests` (xUnit).
    - PRs fora do fluxo de branches ou com testes quebrados são comentados e **fechados automaticamente**.
-   - Quando um PR é aprovado/mesclado na `develop` e os testes passam, um PR de promoção `develop -> main` é **criado (ou atualizado) automaticamente**.
 2. **Sincronização Automática (`sync-develop.yml`)**:
    - Sempre que a `main` é atualizada, faz merge automático de `main` de volta para `develop`.
 3. **Release & Deploy Automático (`release.yml`)**:
