@@ -85,6 +85,32 @@ public sealed class MigrationServiceTests : IDisposable
     }
 
     [Fact]
+    public void ReconstructHistory_IgnoresNestedGitReposAndUnrelatedFilesInTargetTempPath()
+    {
+        string targetPath = Path.Combine(_tempRoot, "target-with-nested-repo");
+        string nestedRepoPath = Path.Combine(targetPath, "M3", "Rep001");
+        Repository.Init(nestedRepoPath);
+        File.WriteAllText(Path.Combine(nestedRepoPath, "file.txt"), "nested content");
+        File.WriteAllText(Path.Combine(targetPath, "unrelated.txt"), "should not be staged");
+
+        List<CommitMetadata> commitsToMigrate =
+        [
+            new CommitMetadata { Message = "feat: ghost commit", When = new DateTimeOffset(2024, 5, 1, 10, 0, 0, TimeSpan.Zero) }
+        ];
+
+        MigrationService.ReconstructHistory(
+            targetPath,
+            commitsToMigrate,
+            "New Author",
+            "new.author@personal.com");
+
+        using Repository targetRepo = new(targetPath);
+        Assert.Single(targetRepo.Head.Tip.Tree);
+        Assert.NotNull(targetRepo.Head.Tip.Tree["MIGRATION_INFO.md"]);
+        Assert.Null(targetRepo.Head.Tip.Tree["unrelated.txt"]);
+    }
+
+    [Fact]
     public void RunMigration_EndToEnd_ExtractsReconstructsAndPushesToBareRemote()
     {
         string sourcePath = Path.Combine(_tempRoot, "e2e-source");

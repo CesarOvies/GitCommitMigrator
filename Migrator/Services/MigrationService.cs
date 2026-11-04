@@ -227,7 +227,9 @@ public static class MigrationService
 
         string dummyFilePath = Path.Combine(targetLocalTempPath, "MIGRATION_INFO.md");
         File.WriteAllText(dummyFilePath, "Repositório gerado via Git Commit Migrator (Ghost Commits).");
-        Commands.Stage(targetRepo, "*");
+        targetRepo.Index.Clear();
+        targetRepo.Index.Add("MIGRATION_INFO.md");
+        targetRepo.Index.Write();
 
         Signature initialSignature = new(newAuthorName, newAuthorEmail, DateTimeOffset.Now);
         targetRepo.Commit("Initial commit", initialSignature, initialSignature);
@@ -236,7 +238,7 @@ public static class MigrationService
 
         if (currentBranch.FriendlyName != "main")
         {
-            targetRepo.Branches.Rename(currentBranch, "main");
+            targetRepo.Branches.Rename(currentBranch, "main", allowOverwrite: true);
         }
 
         foreach (CommitMetadata meta in commitsToMigrate)
@@ -252,7 +254,16 @@ public static class MigrationService
     {
         using Repository targetRepo = new(targetLocalTempPath);
 
-        Remote remote = targetRepo.Network.Remotes.Add("origin", targetRemoteUrl);
+        if (targetRepo.Network.Remotes["origin"] is not null)
+        {
+            targetRepo.Network.Remotes.Update("origin", r => r.Url = targetRemoteUrl);
+        }
+        else
+        {
+            targetRepo.Network.Remotes.Add("origin", targetRemoteUrl);
+        }
+
+        Remote remote = targetRepo.Network.Remotes["origin"]!;
 
         PushOptions pushOptions = new()
         {
