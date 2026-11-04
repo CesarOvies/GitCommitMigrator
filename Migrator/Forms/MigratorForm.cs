@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Migrator.Models;
@@ -11,10 +12,25 @@ namespace Migrator.Forms;
 
 public class MigratorForm : Form
 {
-    private const int FieldWidth = 380;
-    private const int BrowseButtonWidth = 36;
+    private const int FieldWidth = 390;
+    private const int BrowseButtonWidth = 38;
+    private const int DwmwaUseImmersiveDarkMode = 20;
+
+    private static readonly Color BgCanvas = Color.FromArgb(13, 17, 23);       // #0D1117
+    private static readonly Color BgInput = Color.FromArgb(22, 27, 34);        // #161B22
+    private static readonly Color BgButtonSubtle = Color.FromArgb(33, 38, 45); // #21262D
+    private static readonly Color BorderSubtle = Color.FromArgb(48, 54, 61);   // #30363D
+    private static readonly Color BorderFocus = Color.FromArgb(56, 139, 253);  // #388BFD
+    private static readonly Color TextPrimary = Color.FromArgb(230, 237, 243); // #E6EDF3
+    private static readonly Color TextSecondary = Color.FromArgb(139, 148, 158); // #8B949E
+    private static readonly Color AccentGreen = Color.FromArgb(35, 134, 54);   // #238636
+    private static readonly Color AccentGreenHover = Color.FromArgb(46, 160, 67); // #2EA043
+    private static readonly Color AccentGreenBorder = Color.FromArgb(63, 185, 80); // #3FB950
 
     private readonly ErrorProvider errorProvider;
+    private readonly Font labelFont;
+    private readonly Font inputFont;
+    private readonly Font buttonFont;
     private readonly Label lblSourceRepo;
     private readonly TextBox txtSourceRepo;
     private readonly Label lblLocalTemp;
@@ -37,12 +53,27 @@ public class MigratorForm : Form
     private bool isProcessing;
     private bool hasActiveErrors;
 
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+
     public MigratorForm()
     {
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         AutoScaleMode = AutoScaleMode.Dpi;
+        BackColor = BgCanvas;
+        ForeColor = TextPrimary;
+
+        labelFont = new Font("Segoe UI Semibold", 9F, FontStyle.Regular, GraphicsUnit.Point);
+        inputFont = new Font("Segoe UI", 9.5F, FontStyle.Regular, GraphicsUnit.Point);
+        buttonFont = new Font("Segoe UI Semibold", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+
+        using var iconStream = typeof(MigratorForm).Assembly.GetManifestResourceStream("Migrator.Assets.app.ico");
+        if (iconStream is not null)
+        {
+            Icon = new Icon(iconStream);
+        }
 
         errorProvider = new ErrorProvider(this)
         {
@@ -56,7 +87,8 @@ public class MigratorForm : Form
             WrapContents = false,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
-            Padding = new Padding(20, 20, 36, 12)
+            BackColor = BgCanvas,
+            Padding = new Padding(22, 18, 38, 16)
         };
 
         (lblSourceRepo, txtSourceRepo) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).SourceRepoBrowseTitle);
@@ -66,29 +98,38 @@ public class MigratorForm : Form
         (lblNewName, txtNewName) = AddField(panel);
         (lblNewEmail, txtNewEmail) = AddField(panel);
         (lblPatToken, txtPatToken) = AddField(panel);
-        txtPatToken.PasswordChar = '*';
+        txtPatToken.PasswordChar = '•';
 
         btnMigrate = new Button
         {
             Width = FieldWidth,
-            Height = 40,
-            Margin = new Padding(0, 18, 0, 10),
+            Height = 42,
+            Margin = new Padding(0, 20, 0, 12),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = AccentGreen,
+            ForeColor = Color.White,
+            Font = buttonFont,
             Cursor = Cursors.Hand
         };
+        btnMigrate.FlatAppearance.BorderSize = 1;
+        btnMigrate.FlatAppearance.BorderColor = AccentGreenBorder;
+        btnMigrate.FlatAppearance.MouseOverBackColor = AccentGreenHover;
+        btnMigrate.FlatAppearance.MouseDownBackColor = AccentGreen;
         btnMigrate.Click += async (s, e) => await ExecuteMigrationAsync();
         panel.Controls.Add(btnMigrate);
 
         var footerBar = new Panel
         {
             Width = FieldWidth,
-            Height = 32,
-            Margin = new Padding(0, 4, 0, 0)
+            Height = 36,
+            Margin = new Padding(0, 4, 0, 0),
+            BackColor = BgCanvas
         };
 
-        var separator = new Label
+        var separator = new Panel
         {
-            BorderStyle = BorderStyle.Fixed3D,
-            Height = 2,
+            BackColor = BorderSubtle,
+            Height = 1,
             Width = FieldWidth,
             Location = new Point(0, 0)
         };
@@ -96,14 +137,20 @@ public class MigratorForm : Form
         lblLanguage = new Label
         {
             AutoSize = true,
-            Location = new Point(0, 10)
+            Font = labelFont,
+            ForeColor = TextSecondary,
+            Location = new Point(0, 12)
         };
 
         cmbLanguage = new ComboBox
         {
             DropDownStyle = ComboBoxStyle.DropDownList,
-            Width = 170,
-            Location = new Point(FieldWidth - 170, 6)
+            FlatStyle = FlatStyle.Flat,
+            BackColor = BgInput,
+            ForeColor = TextPrimary,
+            Font = inputFont,
+            Width = 175,
+            Location = new Point(FieldWidth - 175, 8)
         };
         cmbLanguage.Items.AddRange(
         [
@@ -134,6 +181,27 @@ public class MigratorForm : Form
 
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
+        {
+            int useDarkMode = 1;
+            _ = DwmSetWindowAttribute(Handle, DwmwaUseImmersiveDarkMode, ref useDarkMode, sizeof(int));
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            labelFont.Dispose();
+            inputFont.Dispose();
+            buttonFont.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     private void ApplyLanguage()
@@ -171,23 +239,64 @@ public class MigratorForm : Form
         }
     }
 
+    private static (Panel Box, TextBox Input) CreateStyledInputBox(int width)
+    {
+        var textBox = new TextBox
+        {
+            BorderStyle = BorderStyle.None,
+            BackColor = BgInput,
+            ForeColor = TextPrimary,
+            Width = width - 16,
+            Location = new Point(8, 6)
+        };
+
+        var box = new Panel
+        {
+            Width = width,
+            Height = 30,
+            BackColor = BgInput,
+            Margin = new Padding(0, 0, 0, 2)
+        };
+
+        bool isFocused = false;
+        textBox.Enter += (s, e) =>
+        {
+            isFocused = true;
+            box.Invalidate();
+        };
+        textBox.Leave += (s, e) =>
+        {
+            isFocused = false;
+            box.Invalidate();
+        };
+        box.Paint += (s, e) =>
+        {
+            using var pen = new Pen(isFocused ? BorderFocus : BorderSubtle, 1);
+            e.Graphics.DrawRectangle(pen, 0, 0, box.Width - 1, box.Height - 1);
+        };
+        box.Click += (s, e) => textBox.Focus();
+
+        box.Controls.Add(textBox);
+        return (box, textBox);
+    }
+
     private (Label Label, TextBox Input) AddField(FlowLayoutPanel panel)
     {
         var label = new Label
         {
             Width = FieldWidth,
             AutoSize = true,
-            Margin = new Padding(0, 8, 0, 3)
+            Font = labelFont,
+            ForeColor = TextSecondary,
+            Margin = new Padding(0, 9, 0, 4)
         };
         panel.Controls.Add(label);
 
-        var textBox = new TextBox
-        {
-            Width = FieldWidth,
-            Margin = new Padding(0, 0, 0, 2)
-        };
-        textBox.TextChanged += (s, e) => errorProvider.SetError(textBox, string.Empty);
-        panel.Controls.Add(textBox);
+        var (box, textBox) = CreateStyledInputBox(FieldWidth);
+        textBox.Font = inputFont;
+        textBox.TextChanged += (s, e) => errorProvider.SetError(box, string.Empty);
+        textBox.Tag = box;
+        panel.Controls.Add(box);
         return (label, textBox);
     }
 
@@ -197,7 +306,9 @@ public class MigratorForm : Form
         {
             Width = FieldWidth,
             AutoSize = true,
-            Margin = new Padding(0, 8, 0, 3)
+            Font = labelFont,
+            ForeColor = TextSecondary,
+            Margin = new Padding(0, 9, 0, 4)
         };
         panel.Controls.Add(label);
 
@@ -207,23 +318,29 @@ public class MigratorForm : Form
             WrapContents = false,
             AutoSize = true,
             AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = BgCanvas,
             Margin = new Padding(0, 0, 0, 2)
         };
 
-        var textBox = new TextBox
-        {
-            Width = FieldWidth - BrowseButtonWidth - 6,
-            Margin = new Padding(0, 0, 6, 0)
-        };
+        var (box, textBox) = CreateStyledInputBox(FieldWidth - BrowseButtonWidth - 6);
+        textBox.Font = inputFont;
+        box.Margin = new Padding(0, 0, 6, 0);
 
         var btnBrowse = new Button
         {
             Text = "...",
             Width = BrowseButtonWidth,
-            Height = textBox.PreferredHeight,
+            Height = box.Height,
             Margin = new Padding(0),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = BgButtonSubtle,
+            ForeColor = TextPrimary,
+            Font = labelFont,
             Cursor = Cursors.Hand
         };
+        btnBrowse.FlatAppearance.BorderSize = 1;
+        btnBrowse.FlatAppearance.BorderColor = BorderSubtle;
+        btnBrowse.FlatAppearance.MouseOverBackColor = BorderSubtle;
 
         textBox.TextChanged += (s, e) => errorProvider.SetError(btnBrowse, string.Empty);
 
@@ -242,7 +359,7 @@ public class MigratorForm : Form
             }
         };
 
-        row.Controls.Add(textBox);
+        row.Controls.Add(box);
         row.Controls.Add(btnBrowse);
         panel.Controls.Add(row);
         textBox.Tag = btnBrowse;
@@ -271,11 +388,11 @@ public class MigratorForm : Form
         {
             [nameof(RunMigrationRequest.SourceRepoPath)] = (Control?)txtSourceRepo.Tag ?? txtSourceRepo,
             [nameof(RunMigrationRequest.TargetLocalTempPath)] = (Control?)txtLocalTemp.Tag ?? txtLocalTemp,
-            [nameof(RunMigrationRequest.TargetRemoteUrl)] = txtRemoteUrl,
-            [nameof(RunMigrationRequest.FilterOriginalEmail)] = txtOriginalEmail,
-            [nameof(RunMigrationRequest.NewAuthorName)] = txtNewName,
-            [nameof(RunMigrationRequest.NewAuthorEmail)] = txtNewEmail,
-            [nameof(RunMigrationRequest.TargetPatToken)] = txtPatToken
+            [nameof(RunMigrationRequest.TargetRemoteUrl)] = (Control?)txtRemoteUrl.Tag ?? txtRemoteUrl,
+            [nameof(RunMigrationRequest.FilterOriginalEmail)] = (Control?)txtOriginalEmail.Tag ?? txtOriginalEmail,
+            [nameof(RunMigrationRequest.NewAuthorName)] = (Control?)txtNewName.Tag ?? txtNewName,
+            [nameof(RunMigrationRequest.NewAuthorEmail)] = (Control?)txtNewEmail.Tag ?? txtNewEmail,
+            [nameof(RunMigrationRequest.TargetPatToken)] = (Control?)txtPatToken.Tag ?? txtPatToken
         };
 
         foreach (var (key, message) in errors)
@@ -320,6 +437,8 @@ public class MigratorForm : Form
         UiTranslations t = LocalizationService.Get(currentLanguage);
         isProcessing = true;
         btnMigrate.Enabled = false;
+        btnMigrate.BackColor = BgButtonSubtle;
+        btnMigrate.FlatAppearance.BorderColor = BorderSubtle;
         btnMigrate.Text = t.ProcessingButton;
 
         try
@@ -338,6 +457,8 @@ public class MigratorForm : Form
         {
             isProcessing = false;
             btnMigrate.Enabled = true;
+            btnMigrate.BackColor = AccentGreen;
+            btnMigrate.FlatAppearance.BorderColor = AccentGreenBorder;
             btnMigrate.Text = LocalizationService.Get(currentLanguage).MigrateButton;
         }
     }
