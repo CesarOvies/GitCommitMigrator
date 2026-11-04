@@ -15,6 +15,9 @@ jobs:
   release-and-deploy:
     name: Build Portable ZIP, Security Scan & Publish Release/Package
     runs-on: windows-latest
+    env:
+      SECRET_CERT_BASE64: CERT_PFX_BASE64
+      SECRET_CERT_PASS: CERT_PASSWORD
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -64,24 +67,49 @@ jobs:
 
       - name: Sign Portable Executable (if certificate configured)
         env:
-          CERT_BASE64: ${{ secrets.CERT_PFX_BASE64 }}
-          CERT_PASS: ${{ secrets.CERT_PASSWORD }}
+          CERT_BASE64: ${{ secrets[env.SECRET_CERT_BASE64] }}
+          CERT_PASS: ${{ secrets[env.SECRET_CERT_PASS] }}
         shell: pwsh
         run: |
           if (-not [string]::IsNullOrWhiteSpace($env:CERT_BASE64) -and -not [string]::IsNullOrWhiteSpace($env:CERT_PASS)) {
             Write-Host "Certificado encontrado. Assinando Git.Commit.Migrator.exe..."
             $pfxPath = "./cert.pfx"
+            $exePath = "./publish/portable/Git.Commit.Migrator.exe"
             try {
               $pfxBytes = [Convert]::FromBase64String($env:CERT_BASE64)
               [IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
-              $securePass = ConvertTo-SecureString -String $env:CERT_PASS -Force -AsPlainText
-              $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\My" -Password $securePass
-              $sigResult = Set-AuthenticodeSignature `
-                -FilePath "./publish/portable/Git.Commit.Migrator.exe" `
-                -Certificate $cert `
-                -HashAlgorithm SHA256 `
-                -TimestampServer "http://timestamp.digicert.com"
-              Write-Host "Assinatura concluída com status: $($sigResult.Status)"
+
+              $signtool = Get-Command signtool.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -First 1
+              if (-not $signtool) {
+                $signtool = Get-ChildItem -Path "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+                  Sort-Object FullName -Descending |
+                  Select-Object -ExpandProperty FullName -First 1
+              }
+
+              if ($signtool) {
+                & $signtool sign `
+                  /f $pfxPath `
+                  /p $env:CERT_PASS `
+                  /fd SHA256 `
+                  /tr "http://timestamp.digicert.com" `
+                  /td SHA256 `
+                  /d "Git Commit Migrator" `
+                  /du "https://github.com/CesarOvies/GitCommitMigrator" `
+                  $exePath
+                if ($LASTEXITCODE -ne 0) {
+                  throw "signtool retornou código de erro $LASTEXITCODE"
+                }
+                Write-Host "Assinatura concluída via signtool (com descrição e URL)."
+              } else {
+                $securePass = ConvertTo-SecureString -String $env:CERT_PASS -Force -AsPlainText
+                $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation "Cert:\CurrentUser\My" -Password $securePass
+                $sigResult = Set-AuthenticodeSignature `
+                  -FilePath $exePath `
+                  -Certificate $cert `
+                  -HashAlgorithm SHA256 `
+                  -TimestampServer "http://timestamp.digicert.com"
+                Write-Host "Assinatura concluída via Set-AuthenticodeSignature: $($sigResult.Status)"
+              }
             } catch {
               Write-Warning "Falha ao assinar o executável (prosseguindo sem assinatura): $_"
             } finally {
