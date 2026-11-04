@@ -25,7 +25,7 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 | `Migrator/Models/RunMigrationRequest.cs` | `Migrator.Models.RunMigrationRequest` | DTO de entrada com os 7 parâmetros preenchidos na UI. |
 | `Migrator/Models/CommitMetadata.cs` | `Migrator.Models.CommitMetadata` | DTO representando um commit extraído (`Message` e `When`). |
 | `Migrator.Tests/Services/MigrationServiceTests.cs` | `Migrator.Tests.Services.MigrationServiceTests` | Testes automatizados (xUnit) validando extração, reconstrução de histórico e push E2E em repositório bare local. |
-| `.github/workflows/ci.yml` | `CI & PR Policy` | Workflow do GitHub Actions que valida governança de branches em PRs (`* -> develop` e `develop -> main`), roda `dotnet test` e fecha automaticamente PRs inválidos ou com testes quebrados. |
+| `.github/workflows/ci.yml` | `CI & PR Policy` | Workflow do GitHub Actions que valida governança de branches em PRs (`* -> develop` e `develop -> main`), roda `dotnet test`, fecha automaticamente PRs inválidos ou com testes quebrados e abre/atualiza automaticamente o PR `develop -> main` após push na `develop`. |
 | `.github/workflows/sync-develop.yml` | `Sync Develop with Main` | Faz merge automático de `main` em `develop` após qualquer push na `main`. |
 | `.github/workflows/release.yml` | `Release & Package Deploy` | Ao entrar commit na `main`, gera tag `v1.0.x`, empacota versão Portable `.zip` (`win-x64`), calcula hashes SHA-256/SHA-512, roda scan Defender + VirusTotal, gera atestado SLSA, publica no GitHub Packages e cria GitHub Release. |
 
