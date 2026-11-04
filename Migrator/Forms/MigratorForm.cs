@@ -340,6 +340,7 @@ public class MigratorForm : Form
         }
         catch (Exception ex)
         {
+            ErrorLogService.LogException(ex, "ImportConfiguration");
             MessageBox.Show($"{t.ImportErrorMessage}\n{ex.Message}", t.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -367,6 +368,7 @@ public class MigratorForm : Form
         }
         catch (Exception ex)
         {
+            ErrorLogService.LogException(ex, "ExportConfiguration", SensitiveValues(BuildRequest()));
             MessageBox.Show($"{t.ExportErrorMessage}\n{ex.Message}", t.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -677,6 +679,7 @@ public class MigratorForm : Form
         }
         catch (Exception ex)
         {
+            ErrorLogService.LogException(ex, "RunMigration", SensitiveValues(request));
             t = LocalizationService.Get(currentLanguage);
             MessageBox.Show($"{t.ErrorMessagePrefix}\n{ex.Message}", t.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
@@ -692,6 +695,9 @@ public class MigratorForm : Form
             btnMigrate.Text = LocalizationService.Get(currentLanguage).MigrateButton;
         }
     }
+
+    private static string?[] SensitiveValues(RunMigrationRequest r) =>
+        [r.SourcePatToken, r.TargetPatToken, r.FilterOriginalEmail, r.NewAuthorEmail, r.NewAuthorName];
 
     private List<CommitMetadata>? PromptCommitSelectionOnUiThread(
         IReadOnlyList<CommitMetadata> extractedCommits,

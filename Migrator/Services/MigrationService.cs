@@ -429,16 +429,73 @@ public static class MigrationService
 
         Remote remote = targetRepo.Network.Remotes["origin"]!;
 
-        PushOptions pushOptions = new()
+        LibGit2Sharp.Handlers.CredentialsHandler credentials = (_url, _user, _cred) =>
+            new UsernamePasswordCredentials
+            {
+                Username = "PAT",
+                Password = targetPatToken
+            };
+
+        Commands.Fetch(
+            targetRepo,
+            "origin",
+            ["+refs/heads/main:refs/remotes/origin/main"],
+            new FetchOptions { CredentialsProvider = credentials },
+            null);
+
+        Commit? remoteTip = targetRepo.Branches["origin/main"]?.Tip;
+        if (remoteTip is not null)
         {
-            CredentialsProvider = (_url, _user, _cred) =>
-                new UsernamePasswordCredentials
-                {
-                    Username = "PAT",
-                    Password = targetPatToken
-                }
-        };
+            ReplayOntoRemote(targetRepo, remoteTip);
+        }
+
+        PushOptions pushOptions = new() { CredentialsProvider = credentials };
 
         targetRepo.Network.Push(remote, @"refs/heads/main", pushOptions);
+    }
+
+    // Remote already has history: rebuild local ghost commits on top of it (no force push),
+    // skipping the local "Initial commit" and commits already present remotely (same author email/date/message).
+    private static void ReplayOntoRemote(Repository targetRepo, Commit remoteTip)
+    {
+        Commit localTip = targetRepo.Head.Tip;
+        if (targetRepo.ObjectDatabase.FindMergeBase(localTip, remoteTip)?.Sha == remoteTip.Sha)
+        {
+            return;
+        }
+
+        HashSet<(string, DateTimeOffset, string)> existing = targetRepo.Commits
+            .QueryBy(new CommitFilter { IncludeReachableFrom = remoteTip })
+            .Select(c => (c.Author.Email.ToLowerInvariant(), c.Author.When, c.Message))
+            .ToHashSet();
+
+        List<Commit> localGhosts = targetRepo.Commits
+            .QueryBy(new CommitFilter
+            {
+                IncludeReachableFrom = localTip,
+                ExcludeReachableFrom = remoteTip,
+                SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Reverse
+            })
+            .Where(c => c.Parents.Any())
+            .ToList();
+
+        Commit newTip = remoteTip;
+        foreach (Commit ghost in localGhosts)
+        {
+            if (existing.Contains((ghost.Author.Email.ToLowerInvariant(), ghost.Author.When, ghost.Message)))
+            {
+                continue;
+            }
+
+            newTip = targetRepo.ObjectDatabase.CreateCommit(
+                ghost.Author,
+                ghost.Committer,
+                ghost.Message,
+                newTip.Tree,
+                [newTip],
+                prettifyMessage: false);
+        }
+
+        targetRepo.Refs.UpdateTarget("refs/heads/main", newTip.Id.Sha);
     }
 }
