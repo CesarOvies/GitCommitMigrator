@@ -200,8 +200,15 @@ jobs:
               } else {
                 $uploadUri = "https://www.virustotal.com/api/v3/files"
               }
-              $form = @{ file = $fileItem }
-              $uploadResp = Invoke-RestMethod -Uri $uploadUri -Method Post -Headers $headers -Form $form
+              $curlJson = curl.exe --silent --show-error --fail-with-body --request POST `
+                --url $uploadUri `
+                --header "x-apikey: $($env:VT_API_KEY)" `
+                --header "accept: application/json" `
+                --form "file=@$($fileItem.FullName);type=application/zip"
+              if ($LASTEXITCODE -ne 0) {
+                throw "curl retornou código $LASTEXITCODE : $curlJson"
+              }
+              $uploadResp = $curlJson | ConvertFrom-Json
               $analysisId = $uploadResp.data.id
 
               $stats = $null

@@ -92,6 +92,7 @@ O repositório conta com pipelines automatizados em `.github/workflows/`:
    - A branch `main` aceita exclusivamente PRs originados de `develop`.
    - Compila a solução e executa a suíte `Migrator.Tests` (xUnit).
    - PRs fora do fluxo de branches ou com testes quebrados são comentados e **fechados automaticamente**.
+   - Quando um PR é aprovado/mesclado na `develop` e os testes passam, um PR de promoção `develop -> main` é **criado (ou atualizado) automaticamente**.
 2. **Sincronização Automática (`sync-develop.yml`)**:
    - Sempre que a `main` é atualizada, faz merge automático de `main` de volta para `develop`.
 3. **Release & Deploy Automático (`release.yml`)**:
