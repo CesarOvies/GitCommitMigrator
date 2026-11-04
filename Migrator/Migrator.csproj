@@ -21,10 +21,14 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <PackageIcon>logo.png</PackageIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <None Include="..\README.md" Pack="true" PackagePath="\" />
+    <None Include="Assets\logo.png" Pack="true" PackagePath="\" />
+    <EmbeddedResource Include="Assets\app.ico" />
   </ItemGroup>
 
   <ItemGroup>
