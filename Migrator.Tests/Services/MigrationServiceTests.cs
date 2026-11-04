@@ -125,6 +125,7 @@ public sealed class MigrationServiceTests : IDisposable
         using (Repository sourceRepo = new(sourcePath))
         {
             CommitEmpty(sourceRepo, "feat: migrated commit", "Corp User", "corp@work.com", originalWhen);
+            CommitEmpty(sourceRepo, "chore: other user commit", "Other User", "other@work.com", originalWhen.AddHours(1));
         }
 
         RunMigrationRequest request = new()
@@ -138,7 +139,7 @@ public sealed class MigrationServiceTests : IDisposable
             TargetPatToken = "dummy-pat"
         };
 
-        MigrationService.RunMigration(request);
+        string logFilePath = MigrationService.RunMigration(request, logDirectoryPath: _tempRoot);
 
         using Repository bareRepo = new(remoteBarePath);
         Branch? mainBranch = bareRepo.Branches["main"];
@@ -157,6 +158,17 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal("Personal User", pushedCommits[1].Author.Name);
         Assert.Equal("personal@home.com", pushedCommits[1].Author.Email);
         Assert.Equal(originalWhen, pushedCommits[1].Author.When);
+
+        Assert.False(Directory.Exists(Path.Combine(targetTempPath, ".git")));
+        Assert.False(File.Exists(Path.Combine(targetTempPath, "MIGRATION_INFO.md")));
+
+        Assert.True(File.Exists(logFilePath));
+        Assert.Matches(@"^migration_\d{8}_\d{4}\.log$", Path.GetFileName(logFilePath));
+        string logContent = File.ReadAllText(logFilePath);
+        Assert.Contains("Commits encontrados na origem: 2", logContent);
+        Assert.Contains("Commits descartados/limpos pelo filtro: 1", logContent);
+        Assert.Contains("Commits migrados (ghost commits): 1", logContent);
+        Assert.Contains(".git removido: Sim, MIGRATION_INFO.md removido: Sim", logContent);
     }
 
     [Fact]
