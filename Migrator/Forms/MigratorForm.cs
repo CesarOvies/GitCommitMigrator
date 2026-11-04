@@ -31,6 +31,8 @@ public class MigratorForm : Form
     private readonly Font labelFont;
     private readonly Font inputFont;
     private readonly Font buttonFont;
+    private readonly Button btnImportConfig;
+    private readonly Button btnExportConfig;
     private readonly Label lblSourceRepo;
     private readonly TextBox txtSourceRepo;
     private readonly Label lblLocalTemp;
@@ -45,6 +47,10 @@ public class MigratorForm : Form
     private readonly TextBox txtNewEmail;
     private readonly Label lblPatToken;
     private readonly TextBox txtPatToken;
+    private readonly Panel progressSection;
+    private readonly Label lblProgressStatus;
+    private readonly Label lblProgressPercent;
+    private readonly Panel progressBarBox;
     private readonly Button btnMigrate;
     private readonly Label lblLanguage;
     private readonly ComboBox cmbLanguage;
@@ -52,6 +58,7 @@ public class MigratorForm : Form
     private AppLanguage currentLanguage = AppLanguage.PtBr;
     private bool isProcessing;
     private bool hasActiveErrors;
+    private int currentProgressPercentage;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
@@ -91,6 +98,23 @@ public class MigratorForm : Form
             Padding = new Padding(22, 18, 38, 16)
         };
 
+        var configRow = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = BgCanvas,
+            Margin = new Padding(0, 0, 0, 6)
+        };
+
+        int halfWidth = (FieldWidth - 8) / 2;
+        btnImportConfig = CreateSubtleActionButton(halfWidth, new Padding(0, 0, 8, 0), ImportConfigurationFromDialog);
+        btnExportConfig = CreateSubtleActionButton(halfWidth, new Padding(0), ExportConfigurationFromDialog);
+        configRow.Controls.Add(btnImportConfig);
+        configRow.Controls.Add(btnExportConfig);
+        panel.Controls.Add(configRow);
+
         (lblSourceRepo, txtSourceRepo) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).SourceRepoBrowseTitle);
         (lblLocalTemp, txtLocalTemp) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).LocalTempBrowseTitle);
         (lblRemoteUrl, txtRemoteUrl) = AddField(panel);
@@ -100,11 +124,66 @@ public class MigratorForm : Form
         (lblPatToken, txtPatToken) = AddField(panel);
         txtPatToken.PasswordChar = '•';
 
+        progressSection = new Panel
+        {
+            Width = FieldWidth,
+            Height = 36,
+            Margin = new Padding(0, 12, 0, 0),
+            BackColor = BgCanvas,
+            Visible = false
+        };
+
+        lblProgressStatus = new Label
+        {
+            AutoSize = false,
+            Width = FieldWidth - 50,
+            Height = 18,
+            Location = new Point(0, 0),
+            Font = labelFont,
+            ForeColor = TextSecondary,
+            AutoEllipsis = true
+        };
+
+        lblProgressPercent = new Label
+        {
+            AutoSize = false,
+            Width = 48,
+            Height = 18,
+            Location = new Point(FieldWidth - 48, 0),
+            Font = labelFont,
+            ForeColor = TextPrimary,
+            TextAlign = ContentAlignment.TopRight
+        };
+
+        progressBarBox = new Panel
+        {
+            Width = FieldWidth,
+            Height = 10,
+            Location = new Point(0, 22),
+            BackColor = BgInput
+        };
+        progressBarBox.Paint += (s, e) =>
+        {
+            int fillWidth = (int)Math.Round((progressBarBox.Width - 2) * (Math.Clamp(currentProgressPercentage, 0, 100) / 100.0));
+            if (fillWidth > 0)
+            {
+                using var brush = new SolidBrush(AccentGreenBorder);
+                e.Graphics.FillRectangle(brush, 1, 1, fillWidth, progressBarBox.Height - 2);
+            }
+            using var pen = new Pen(BorderSubtle, 1);
+            e.Graphics.DrawRectangle(pen, 0, 0, progressBarBox.Width - 1, progressBarBox.Height - 1);
+        };
+
+        progressSection.Controls.Add(lblProgressStatus);
+        progressSection.Controls.Add(lblProgressPercent);
+        progressSection.Controls.Add(progressBarBox);
+        panel.Controls.Add(progressSection);
+
         btnMigrate = new Button
         {
             Width = FieldWidth,
             Height = 42,
-            Margin = new Padding(0, 20, 0, 12),
+            Margin = new Padding(0, 16, 0, 12),
             FlatStyle = FlatStyle.Flat,
             BackColor = AccentGreen,
             ForeColor = Color.White,
@@ -204,11 +283,109 @@ public class MigratorForm : Form
         base.Dispose(disposing);
     }
 
+    private Button CreateSubtleActionButton(int width, Padding margin, Action onClick)
+    {
+        var button = new Button
+        {
+            Width = width,
+            Height = 32,
+            Margin = margin,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = BgButtonSubtle,
+            ForeColor = TextPrimary,
+            Font = labelFont,
+            Cursor = Cursors.Hand
+        };
+        button.FlatAppearance.BorderSize = 1;
+        button.FlatAppearance.BorderColor = BorderSubtle;
+        button.FlatAppearance.MouseOverBackColor = BorderSubtle;
+        button.Click += (s, e) => onClick();
+        return button;
+    }
+
+    private void ImportConfigurationFromDialog()
+    {
+        UiTranslations t = LocalizationService.Get(currentLanguage);
+        using var dialog = new OpenFileDialog
+        {
+            Title = t.ImportDialogTitle,
+            Filter = t.ConfigFileFilter,
+            DefaultExt = "json"
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            RunMigrationRequest imported = MigrationService.ImportConfiguration(dialog.FileName);
+            ApplyRequestToFields(imported);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"{t.ImportErrorMessage}\n{ex.Message}", t.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void ExportConfigurationFromDialog()
+    {
+        UiTranslations t = LocalizationService.Get(currentLanguage);
+        using var dialog = new SaveFileDialog
+        {
+            Title = t.ExportDialogTitle,
+            Filter = t.ConfigFileFilter,
+            DefaultExt = "json",
+            FileName = "migration-config.json"
+        };
+
+        if (dialog.ShowDialog(this) != DialogResult.OK)
+        {
+            return;
+        }
+
+        try
+        {
+            MigrationService.ExportConfiguration(BuildRequest(), dialog.FileName);
+            MessageBox.Show(t.ExportSuccessMessage, t.SuccessTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"{t.ExportErrorMessage}\n{ex.Message}", t.ErrorTitle, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void ApplyRequestToFields(RunMigrationRequest request)
+    {
+        txtSourceRepo.Text = request.SourceRepoPath ?? string.Empty;
+        txtLocalTemp.Text = request.TargetLocalTempPath ?? string.Empty;
+        txtRemoteUrl.Text = request.TargetRemoteUrl ?? string.Empty;
+        txtOriginalEmail.Text = request.FilterOriginalEmail ?? string.Empty;
+        txtNewName.Text = request.NewAuthorName ?? string.Empty;
+        txtNewEmail.Text = request.NewAuthorEmail ?? string.Empty;
+        txtPatToken.Text = request.TargetPatToken ?? string.Empty;
+        errorProvider.Clear();
+        hasActiveErrors = false;
+    }
+
+    private void UpdateProgressUi(MigrationProgress progress)
+    {
+        currentProgressPercentage = Math.Clamp(progress.Percentage, 0, 100);
+        lblProgressStatus.Text = progress.StatusMessage;
+        lblProgressPercent.Text = $"{currentProgressPercentage}%";
+        progressSection.Visible = true;
+        progressBarBox.Invalidate();
+    }
+
     private void ApplyLanguage()
     {
         UiTranslations t = LocalizationService.Get(currentLanguage);
 
         Text = t.WindowTitle;
+        btnImportConfig.Text = t.ImportConfigButton;
+        btnExportConfig.Text = t.ExportConfigButton;
+
         lblSourceRepo.Text = t.SourceRepoLabel;
         txtSourceRepo.PlaceholderText = t.SourceRepoPlaceholder;
 
@@ -435,17 +612,24 @@ public class MigratorForm : Form
         }
 
         UiTranslations t = LocalizationService.Get(currentLanguage);
+        AppLanguage langSnapshot = currentLanguage;
         isProcessing = true;
+        btnImportConfig.Enabled = false;
+        btnExportConfig.Enabled = false;
         btnMigrate.Enabled = false;
         btnMigrate.BackColor = BgButtonSubtle;
         btnMigrate.FlatAppearance.BorderColor = BorderSubtle;
         btnMigrate.Text = t.ProcessingButton;
 
+        UpdateProgressUi(new MigrationProgress(0, t.StatusExtractingCommits));
+        IProgress<MigrationProgress> progressReporter = new Progress<MigrationProgress>(UpdateProgressUi);
+
         try
         {
-            await Task.Run(() => MigrationService.RunMigration(request));
+            await Task.Run(() => MigrationService.RunMigration(request, progress: progressReporter, language: langSnapshot));
 
             t = LocalizationService.Get(currentLanguage);
+            UpdateProgressUi(new MigrationProgress(100, t.StatusCompleted));
             MessageBox.Show(t.SuccessMessage, t.SuccessTitle, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         catch (Exception ex)
@@ -456,6 +640,8 @@ public class MigratorForm : Form
         finally
         {
             isProcessing = false;
+            btnImportConfig.Enabled = true;
+            btnExportConfig.Enabled = true;
             btnMigrate.Enabled = true;
             btnMigrate.BackColor = AccentGreen;
             btnMigrate.FlatAppearance.BorderColor = AccentGreenBorder;

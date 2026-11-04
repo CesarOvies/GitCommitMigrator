@@ -1,4 +1,5 @@
 using System.Net.Mail;
+using System.Text.Json;
 using LibGit2Sharp;
 using Migrator.Models;
 
@@ -6,6 +7,30 @@ namespace Migrator.Services;
 
 public static class MigrationService
 {
+    private static readonly JsonSerializerOptions ConfigJsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNameCaseInsensitive = true
+    };
+
+    public static void ExportConfiguration(RunMigrationRequest request, string filePath)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        string json = JsonSerializer.Serialize(request, ConfigJsonOptions);
+        File.WriteAllText(filePath, json);
+    }
+
+    public static RunMigrationRequest ImportConfiguration(string filePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+
+        string json = File.ReadAllText(filePath);
+        return JsonSerializer.Deserialize<RunMigrationRequest>(json, ConfigJsonOptions)
+            ?? throw new InvalidDataException("Invalid configuration file.");
+    }
+
     public static Dictionary<string, string> ValidateRequest(RunMigrationRequest request, AppLanguage language = AppLanguage.PtBr)
     {
         UiTranslations t = LocalizationService.Get(language);
@@ -125,14 +150,19 @@ public static class MigrationService
                addr.Host.Contains('.');
     }
 
-    public static string RunMigration(RunMigrationRequest request, string? logDirectoryPath = null)
+    public static string RunMigration(
+        RunMigrationRequest request,
+        string? logDirectoryPath = null,
+        IProgress<MigrationProgress>? progress = null,
+        AppLanguage language = AppLanguage.PtBr)
     {
-        Dictionary<string, string> errors = ValidateRequest(request);
+        Dictionary<string, string> errors = ValidateRequest(request, language);
         if (errors.Count > 0)
         {
             throw new ArgumentException(string.Join(Environment.NewLine, errors.Values));
         }
 
+        UiTranslations t = LocalizationService.Get(language);
         DateTimeOffset startedAt = DateTimeOffset.Now;
         string source = request.SourceRepoPath.Trim();
         string targetTemp = request.TargetLocalTempPath.Trim();
@@ -142,12 +172,25 @@ public static class MigrationService
         string newEmail = request.NewAuthorEmail.Trim();
         string pat = request.TargetPatToken.Trim();
 
+        progress?.Report(new MigrationProgress(5, t.StatusExtractingCommits));
         (List<CommitMetadata> commits, int totalFound) = ExtractCommitsWithStats(source, originalEmail, pat);
         (bool gitRemoved, bool mdRemoved) cleanupResult = (false, false);
 
         try
         {
-            ReconstructHistory(targetTemp, commits, newName, newEmail);
+            progress?.Report(new MigrationProgress(20, string.Format(t.StatusReconstructingHistory, 0, commits.Count)));
+            ReconstructHistory(
+                targetTemp,
+                commits,
+                newName,
+                newEmail,
+                (current, total) =>
+                {
+                    int pct = total == 0 ? 80 : 20 + (int)Math.Round((double)current / total * 60);
+                    progress?.Report(new MigrationProgress(pct, string.Format(t.StatusReconstructingHistory, current, total)));
+                });
+
+            progress?.Report(new MigrationProgress(85, t.StatusPushingToRemote));
             PushToRemote(targetTemp, remoteUrl, pat);
         }
         finally
@@ -156,7 +199,7 @@ public static class MigrationService
         }
 
         DateTimeOffset finishedAt = DateTimeOffset.Now;
-        return WriteMigrationLog(
+        string logFilePath = WriteMigrationLog(
             logDirectoryPath ?? AppContext.BaseDirectory,
             startedAt,
             finishedAt,
@@ -165,6 +208,9 @@ public static class MigrationService
             commits,
             cleanupResult.gitRemoved,
             cleanupResult.mdRemoved);
+
+        progress?.Report(new MigrationProgress(100, t.StatusCompleted));
+        return logFilePath;
     }
 
     public static List<CommitMetadata> ExtractCommits(string sourceRepoPath, string filterOriginalEmail, string? patToken = null)
@@ -329,7 +375,12 @@ public static class MigrationService
         return logFilePath;
     }
 
-    public static void ReconstructHistory(string targetLocalTempPath, List<CommitMetadata> commitsToMigrate, string newAuthorName, string newAuthorEmail)
+    public static void ReconstructHistory(
+        string targetLocalTempPath,
+        List<CommitMetadata> commitsToMigrate,
+        string newAuthorName,
+        string newAuthorEmail,
+        Action<int, int>? onCommitCreated = null)
     {
         Repository.Init(targetLocalTempPath);
 
@@ -351,12 +402,15 @@ public static class MigrationService
             targetRepo.Branches.Rename(currentBranch, "main", allowOverwrite: true);
         }
 
-        foreach (CommitMetadata meta in commitsToMigrate)
+        int total = commitsToMigrate.Count;
+        for (int i = 0; i < total; i++)
         {
+            CommitMetadata meta = commitsToMigrate[i];
             Signature signature = new(newAuthorName, newAuthorEmail, meta.When);
             CommitOptions commitOptions = new() { AllowEmptyCommit = true };
 
             targetRepo.Commit(meta.Message, signature, signature, commitOptions);
+            onCommitCreated?.Invoke(i + 1, total);
         }
     }
 
