@@ -13,7 +13,9 @@ import {
   Upload,
   Download,
   CheckCircle2,
-  Smartphone
+  Smartphone,
+  GitBranch,
+  RefreshCw
 } from 'lucide-react';
 import { RunMigrationRequest, AppLanguage, SourceMode } from '../types';
 import { getTranslation } from '../services/localization';
@@ -29,6 +31,9 @@ interface MigrationFormProps {
   localFolderName?: string;
   onSelectLocalFolder: () => void;
   hasLocalDirectoryHandle: boolean;
+  availableBranches: string[];
+  isFetchingBranches: boolean;
+  onFetchRemoteBranches: () => void;
 }
 
 export const MigrationForm: React.FC<MigrationFormProps> = ({
@@ -40,7 +45,10 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
   lang,
   localFolderName,
   onSelectLocalFolder,
-  hasLocalDirectoryHandle
+  hasLocalDirectoryHandle,
+  availableBranches,
+  isFetchingBranches,
+  onFetchRemoteBranches
 }) => {
   const t = getTranslation(lang);
   const [showTargetPat, setShowTargetPat] = useState(false);
@@ -154,7 +162,7 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
       {/* Source Section */}
       <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-4 space-y-3 shadow-sm">
         <h2 className="text-xs font-semibold text-[#8B949E] uppercase tracking-wider flex items-center gap-2">
-          <span>Origem</span>
+          <span>{t.sourceSectionHeader}</span>
         </h2>
 
         {request.sourceMode === 'remote' ? (
@@ -177,7 +185,7 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
         ) : (
           <div>
             <label className="block text-xs font-medium text-[#E6EDF3] mb-1">
-              Pasta do Repositório Local (.git):
+              {t.sourceLocalFolderLabel}
             </label>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <button
@@ -192,10 +200,10 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
                 {hasLocalDirectoryHandle ? (
                   <span className="text-accentGreenBorder font-medium flex items-center gap-1.5">
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    {localFolderName || 'Pasta selecionada'}
+                    {localFolderName || t.folderSelectedFallback}
                   </span>
                 ) : (
-                  <span>Nenhuma pasta selecionada</span>
+                  <span>{t.noFolderSelectedText}</span>
                 )}
               </div>
             </div>
@@ -223,13 +231,56 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
                 type="button"
                 onClick={() => setShowSourcePat(!showSourcePat)}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8B949E] hover:text-[#E6EDF3] p-1"
-                aria-label={showSourcePat ? 'Ocultar token' : 'Exibir token'}
+                aria-label={showSourcePat ? t.hideTokenLabel : t.showTokenLabel}
               >
                 {showSourcePat ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
         )}
+
+        {/* Source Branch (Optional) */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-medium text-[#E6EDF3] flex items-center gap-1.5">
+              <GitBranch className="w-3.5 h-3.5 text-accentGreenBorder" />
+              <span>{t.sourceBranchLabel}</span>
+            </label>
+            {request.sourceMode === 'remote' && (
+              <button
+                type="button"
+                onClick={onFetchRemoteBranches}
+                disabled={isFetchingBranches || !request.sourceRepoUrl.trim()}
+                className="text-[11px] text-[#58A6FF] hover:text-[#79C0FF] disabled:text-[#8B949E] disabled:cursor-not-allowed flex items-center gap-1 transition-colors"
+              >
+                <RefreshCw className={`w-3 h-3 ${isFetchingBranches ? 'animate-spin' : ''}`} />
+                <span>{isFetchingBranches ? t.fetchingBranches : t.fetchBranchesButton}</span>
+              </button>
+            )}
+          </div>
+          {availableBranches.length > 0 ? (
+            <select
+              value={request.sourceBranch || ''}
+              onChange={(e) => updateField('sourceBranch', e.target.value)}
+              className="w-full bg-[#0D1117] border border-[#30363D] rounded-md px-3 py-2 text-xs text-[#E6EDF3] focus:border-borderFocus focus:outline-none transition-colors"
+            >
+              <option value="">{t.sourceBranchAll}</option>
+              {availableBranches.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={request.sourceBranch || ''}
+              onChange={(e) => updateField('sourceBranch', e.target.value)}
+              placeholder={t.sourceBranchAll}
+              className="w-full bg-[#0D1117] border border-[#30363D] rounded-md px-3 py-2 text-xs text-[#E6EDF3] focus:border-borderFocus focus:outline-none transition-colors"
+            />
+          )}
+        </div>
 
         {/* Filter Original Email */}
         <div>
@@ -253,7 +304,7 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
       {/* Target Section */}
       <div className="bg-[#161B22] border border-[#30363D] rounded-lg p-4 space-y-3 shadow-sm">
         <h2 className="text-xs font-semibold text-[#8B949E] uppercase tracking-wider flex items-center gap-2">
-          <span>Destino (Repositório Ghost)</span>
+          <span>{t.targetSectionHeader}</span>
         </h2>
 
         {/* Target Remote URL */}
@@ -294,7 +345,7 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
               type="button"
               onClick={() => setShowTargetPat(!showTargetPat)}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8B949E] hover:text-[#E6EDF3] p-1"
-              aria-label={showTargetPat ? 'Ocultar token' : 'Exibir token'}
+              aria-label={showTargetPat ? t.hideTokenLabel : t.showTokenLabel}
             >
               {showTargetPat ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </button>

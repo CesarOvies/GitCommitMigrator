@@ -29,7 +29,7 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, onLanguageChange })
                 Web
               </span>
             </h1>
-            <p className="text-xs text-[#8B949E] hidden sm:block">Ghost Commits &amp; Activity Graph Preservation</p>
+            <p className="text-xs text-[#8B949E] hidden sm:block">{t.headerSubtitle}</p>
           </div>
         </div>
 

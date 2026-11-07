@@ -3,6 +3,7 @@ import { RunMigrationRequest } from '../types';
 export interface DesktopMigrationConfig {
   SourceRepoPath: string;
   SourcePatToken: string;
+  SourceBranch?: string;
   TargetRemoteUrl: string;
   FilterOriginalEmail: string;
   NewAuthorName: string;
@@ -18,6 +19,7 @@ export function exportConfiguration(request: RunMigrationRequest): string {
   const config: DesktopMigrationConfig = {
     SourceRepoPath: request.sourceRepoUrl || '',
     SourcePatToken: request.sourcePatToken || '',
+    SourceBranch: request.sourceBranch || '',
     TargetRemoteUrl: request.targetRemoteUrl || '',
     FilterOriginalEmail: request.filterOriginalEmail || '',
     NewAuthorName: request.newAuthorName || '',
@@ -64,6 +66,7 @@ export function importConfiguration(jsonText: string): Partial<RunMigrationReque
 
   const sourceRepoPath = typeof rawSource === 'string' ? rawSource : '';
   const rawSourcePat = getProp('SourcePatToken') ?? getProp('sourcePatToken') ?? '';
+  const rawSourceBranch = getProp('SourceBranch') ?? getProp('sourceBranch') ?? '';
   const rawTargetRemote = getProp('TargetRemoteUrl') ?? getProp('targetRemoteUrl') ?? '';
   const rawFilterEmail = getProp('FilterOriginalEmail') ?? getProp('filterOriginalEmail') ?? '';
   const rawNewName = getProp('NewAuthorName') ?? getProp('newAuthorName') ?? '';
@@ -81,6 +84,7 @@ export function importConfiguration(jsonText: string): Partial<RunMigrationReque
     sourceRepoUrl: sourceRepoPath,
     sourceMode: isRemote ? 'remote' : undefined,
     sourcePatToken: typeof rawSourcePat === 'string' ? rawSourcePat : '',
+    sourceBranch: typeof rawSourceBranch === 'string' ? rawSourceBranch : '',
     targetRemoteUrl: typeof rawTargetRemote === 'string' ? rawTargetRemote : '',
     filterOriginalEmail: typeof rawFilterEmail === 'string' ? rawFilterEmail : '',
     newAuthorName: typeof rawNewName === 'string' ? rawNewName : '',

@@ -14,6 +14,7 @@ export interface RunMigrationRequest {
   sourceMode: SourceMode;
   sourceRepoUrl: string;
   sourcePatToken?: string;
+  sourceBranch?: string;
   filterOriginalEmail: string;
   targetRemoteUrl: string;
   targetPatToken: string;

@@ -42,7 +42,7 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, lang }) => {
       <div className="flex items-center justify-between px-3 py-2 bg-[#21262D] border-b border-[#30363D] text-xs text-[#8B949E]">
         <div className="flex items-center gap-1.5 font-mono">
           <Terminal className="w-3.5 h-3.5 text-accentGreenBorder" />
-          <span className="font-semibold text-[#E6EDF3]">Log de Execução</span>
+          <span className="font-semibold text-[#E6EDF3]">{t.executionLogTitle}</span>
           <span>({logs.length})</span>
         </div>
         <div className="flex items-center gap-1">
@@ -69,7 +69,7 @@ export const EventLog: React.FC<EventLogProps> = ({ logs, onClear, lang }) => {
       <div
         ref={logContainerRef}
         tabIndex={0}
-        aria-label="Log de Execução"
+        aria-label={t.executionLogTitle}
         className="p-3 font-mono text-[11px] sm:text-xs leading-relaxed max-h-52 overflow-y-auto space-y-1 bg-[#0D1117]/80 focus:outline-none focus:ring-1 focus:ring-borderFocus"
       >
         {logs.map((log) => {
