@@ -22,6 +22,7 @@ describe('config serialization', () => {
     expect(parsed).toEqual({
       SourceRepoPath: 'https://github.com/source/repo.git',
       SourcePatToken: 'ghp_source123',
+      SourceBranch: '',
       TargetRemoteUrl: 'https://github.com/target/repo.git',
       FilterOriginalEmail: 'dev@source.com',
       NewAuthorName: 'Target Dev',
@@ -35,6 +36,7 @@ describe('config serialization', () => {
     expect(json).not.toContain('"sourceRepoPath":');
     expect(json).toContain('"TargetRemoteUrl":');
     expect(json).not.toContain('"targetRemoteUrl":');
+    expect(json).toContain('"SourceBranch":');
   });
 
   it('imports configuration from desktop PascalCase JSON', () => {
@@ -124,5 +126,6 @@ describe('config serialization', () => {
     expect(imported.newAuthorEmail).toBe(sampleRequest.newAuthorEmail);
     expect(imported.targetPatToken).toBe(sampleRequest.targetPatToken);
     expect(imported.useAdvancedSettings).toBe(sampleRequest.useAdvancedSettings);
+    expect(imported.sourceBranch).toBe('');
   });
 });
