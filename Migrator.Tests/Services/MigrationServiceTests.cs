@@ -41,6 +41,63 @@ public sealed class MigrationServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetSourceBranches_ReturnsDistinctBranches()
+    {
+        string sourcePath = Path.Combine(_tempRoot, "branches-repo");
+        Repository.Init(sourcePath);
+
+        DateTimeOffset t1 = new(2024, 1, 10, 10, 0, 0, TimeSpan.Zero);
+        using (Repository repo = new(sourcePath))
+        {
+            CommitEmpty(repo, "Initial commit", "Dev", "dev@company.com", t1);
+            repo.CreateBranch("feature/user-auth");
+            repo.CreateBranch("develop");
+        }
+
+        List<string> branches = MigrationService.GetSourceBranches(sourcePath);
+
+        Assert.Contains("feature/user-auth", branches);
+        Assert.Contains("develop", branches);
+    }
+
+    [Fact]
+    public void ExtractCommits_WithSourceBranch_ExtractsOnlyReachableCommits()
+    {
+        string sourcePath = Path.Combine(_tempRoot, "branch-filter-repo");
+        Repository.Init(sourcePath);
+
+        DateTimeOffset t1 = new(2024, 1, 10, 10, 0, 0, TimeSpan.Zero);
+        DateTimeOffset t2 = new(2024, 1, 11, 10, 0, 0, TimeSpan.Zero);
+        DateTimeOffset t3 = new(2024, 1, 12, 10, 0, 0, TimeSpan.Zero);
+
+        using (Repository repo = new(sourcePath))
+        {
+            CommitEmpty(repo, "Base commit", "Dev", "dev@company.com", t1);
+            Branch featureBranch = repo.CreateBranch("feature/test");
+
+            // Commit on main branch
+            CommitEmpty(repo, "Main branch only commit", "Dev", "dev@company.com", t3);
+
+            // Commit on feature branch
+            Commands.Checkout(repo, featureBranch);
+            CommitEmpty(repo, "Feature branch commit", "Dev", "dev@company.com", t2);
+        }
+
+        // When filtering by feature/test branch:
+        List<CommitMetadata> featureCommits = MigrationService.ExtractCommits(
+            sourcePath, "dev@company.com", patToken: null, sourceBranch: "feature/test");
+
+        Assert.Equal(2, featureCommits.Count);
+        Assert.Contains(featureCommits, c => c.Message == "Base commit\n");
+        Assert.Contains(featureCommits, c => c.Message == "Feature branch commit\n");
+        Assert.DoesNotContain(featureCommits, c => c.Message == "Main branch only commit\n");
+
+        // When filtering by non-existent branch:
+        Assert.Throws<InvalidOperationException>(() =>
+            MigrationService.ExtractCommits(sourcePath, "dev@company.com", patToken: null, sourceBranch: "ghost-branch"));
+    }
+
+    [Fact]
     public void ReconstructHistory_CreatesMainBranch_InitialCommit_AndGhostCommitsWithNewAuthor()
     {
         string targetPath = Path.Combine(_tempRoot, "target-repo");
@@ -200,6 +257,11 @@ public sealed class MigrationServiceTests : IDisposable
         MigrationService.ExportConfiguration(original, configPath);
         Assert.True(File.Exists(configPath));
 
+        string rawJson = File.ReadAllText(configPath);
+        Assert.Contains("\"SourceRepoPath\":", rawJson);
+        Assert.Contains("\"TargetRemoteUrl\":", rawJson);
+        Assert.Contains("\"FilterOriginalEmail\":", rawJson);
+
         RunMigrationRequest imported = MigrationService.ImportConfiguration(configPath);
 
         Assert.Equal(original.SourceRepoPath, imported.SourceRepoPath);
@@ -210,6 +272,36 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal(original.NewAuthorEmail, imported.NewAuthorEmail);
         Assert.Equal(original.TargetPatToken, imported.TargetPatToken);
         Assert.Equal(original.UseAdvancedSettings, imported.UseAdvancedSettings);
+    }
+
+    [Fact]
+    public void ImportConfiguration_AcceptsCamelCaseJsonFromWeb()
+    {
+        string configPath = Path.Combine(_tempRoot, "web-config.json");
+        string camelCaseJson = """
+        {
+          "sourceRepoPath": "https://github.com/org/source.git",
+          "sourcePatToken": "ghp_source123",
+          "targetRemoteUrl": "https://github.com/org/target.git",
+          "filterOriginalEmail": "dev@legacy.com",
+          "newAuthorName": "Modern Dev",
+          "newAuthorEmail": "dev@modern.com",
+          "targetPatToken": "ghp_target456",
+          "useAdvancedSettings": true
+        }
+        """;
+        File.WriteAllText(configPath, camelCaseJson);
+
+        RunMigrationRequest imported = MigrationService.ImportConfiguration(configPath);
+
+        Assert.Equal("https://github.com/org/source.git", imported.SourceRepoPath);
+        Assert.Equal("ghp_source123", imported.SourcePatToken);
+        Assert.Equal("https://github.com/org/target.git", imported.TargetRemoteUrl);
+        Assert.Equal("dev@legacy.com", imported.FilterOriginalEmail);
+        Assert.Equal("Modern Dev", imported.NewAuthorName);
+        Assert.Equal("dev@modern.com", imported.NewAuthorEmail);
+        Assert.Equal("ghp_target456", imported.TargetPatToken);
+        Assert.True(imported.UseAdvancedSettings);
     }
 
     [Fact]
