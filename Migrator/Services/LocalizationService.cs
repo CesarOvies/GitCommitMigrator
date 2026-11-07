@@ -82,7 +82,12 @@ public sealed record UiTranslations(
     string UpdateCurrentVersionLabel,
     string UpdateNewVersionLabel,
     string UpdateReleaseNotesLabel,
-    string UpdateReadySubtitle);
+    string UpdateReadySubtitle,
+    string SourceBranchLabel,
+    string SourceBranchAll,
+    string FetchBranchesButton,
+    string FetchingBranches,
+    string FetchBranchesError);
 
 public static class LocalizationService
 {
@@ -161,7 +166,12 @@ public static class LocalizationService
             UpdateCurrentVersionLabel: "Versão Atual",
             UpdateNewVersionLabel: "Nova Versão",
             UpdateReleaseNotesLabel: "Notas da Versão:",
-            UpdateReadySubtitle: "Uma nova versão do Git Commit Migrator está disponível para atualização."),
+            UpdateReadySubtitle: "Uma nova versão do Git Commit Migrator está disponível para atualização.",
+            SourceBranchLabel: "Branch de Origem (Opcional):",
+            SourceBranchAll: "(Todas as branches)",
+            FetchBranchesButton: "Buscar Branches",
+            FetchingBranches: "Buscando...",
+            FetchBranchesError: "Não foi possível carregar as branches do repositório."),
 
         [AppLanguage.EnUs] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -236,7 +246,12 @@ public static class LocalizationService
             UpdateCurrentVersionLabel: "Current Version",
             UpdateNewVersionLabel: "New Version",
             UpdateReleaseNotesLabel: "Release Notes:",
-            UpdateReadySubtitle: "A new version of Git Commit Migrator is available for update."),
+            UpdateReadySubtitle: "A new version of Git Commit Migrator is available for update.",
+            SourceBranchLabel: "Source Branch (Optional):",
+            SourceBranchAll: "(All branches)",
+            FetchBranchesButton: "Fetch Branches",
+            FetchingBranches: "Fetching...",
+            FetchBranchesError: "Could not fetch branches from the repository."),
 
         [AppLanguage.Es] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -311,7 +326,12 @@ public static class LocalizationService
             UpdateCurrentVersionLabel: "Versión Actual",
             UpdateNewVersionLabel: "Nueva Versión",
             UpdateReleaseNotesLabel: "Notas de la Versión:",
-            UpdateReadySubtitle: "Una nueva versión de Git Commit Migrator está disponible para actualizar."),
+            UpdateReadySubtitle: "Una nueva versión de Git Commit Migrator está disponible para actualizar.",
+            SourceBranchLabel: "Rama de Origen (Opcional):",
+            SourceBranchAll: "(Todas las ramas)",
+            FetchBranchesButton: "Buscar Ramas",
+            FetchingBranches: "Buscando...",
+            FetchBranchesError: "No se pudieron cargar las ramas del repositorio."),
     };
 
     public static UiTranslations Get(AppLanguage language) => Translations[language];

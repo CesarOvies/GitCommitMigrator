@@ -4,15 +4,16 @@ import { MigrationProgress } from '../types';
 interface ProgressBarProps {
   progress: MigrationProgress | null;
   isProcessing: boolean;
+  processingText?: string;
 }
 
-export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, isProcessing }) => {
+export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, isProcessing, processingText }) => {
   if (!isProcessing && !progress) {
     return null;
   }
 
   const percentage = Math.min(100, Math.max(0, progress?.percentage ?? 0));
-  const statusText = progress?.statusText || (isProcessing ? 'Processando...' : '');
+  const statusText = progress?.statusText || (isProcessing ? (processingText || '...') : '');
 
   return (
     <div className="w-full bg-[#161B22] border border-[#30363D] rounded-lg p-3 sm:p-4 my-4 shadow-sm animate-fade-in">

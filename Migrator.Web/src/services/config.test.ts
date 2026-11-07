@@ -7,6 +7,7 @@ describe('config serialization', () => {
     sourceMode: 'remote',
     sourceRepoUrl: 'https://github.com/source/repo.git',
     sourcePatToken: 'ghp_source123',
+    sourceBranch: 'feature/auth',
     targetRemoteUrl: 'https://github.com/target/repo.git',
     filterOriginalEmail: 'dev@source.com',
     newAuthorName: 'Target Dev',
@@ -22,6 +23,7 @@ describe('config serialization', () => {
     expect(parsed).toEqual({
       SourceRepoPath: 'https://github.com/source/repo.git',
       SourcePatToken: 'ghp_source123',
+      SourceBranch: 'feature/auth',
       TargetRemoteUrl: 'https://github.com/target/repo.git',
       FilterOriginalEmail: 'dev@source.com',
       NewAuthorName: 'Target Dev',
@@ -41,6 +43,7 @@ describe('config serialization', () => {
     const desktopJson = JSON.stringify({
       SourceRepoPath: 'https://github.com/source/repo.git',
       SourcePatToken: 'ghp_source123',
+      SourceBranch: 'develop',
       TargetRemoteUrl: 'https://github.com/target/repo.git',
       FilterOriginalEmail: 'dev@source.com',
       NewAuthorName: 'Target Dev',
@@ -54,6 +57,7 @@ describe('config serialization', () => {
     expect(result.sourceRepoUrl).toBe('https://github.com/source/repo.git');
     expect(result.sourceMode).toBe('remote');
     expect(result.sourcePatToken).toBe('ghp_source123');
+    expect(result.sourceBranch).toBe('develop');
     expect(result.targetRemoteUrl).toBe('https://github.com/target/repo.git');
     expect(result.filterOriginalEmail).toBe('dev@source.com');
     expect(result.newAuthorName).toBe('Target Dev');
@@ -118,6 +122,7 @@ describe('config serialization', () => {
 
     expect(imported.sourceRepoUrl).toBe(sampleRequest.sourceRepoUrl);
     expect(imported.sourcePatToken).toBe(sampleRequest.sourcePatToken);
+    expect(imported.sourceBranch).toBe(sampleRequest.sourceBranch);
     expect(imported.targetRemoteUrl).toBe(sampleRequest.targetRemoteUrl);
     expect(imported.filterOriginalEmail).toBe(sampleRequest.filterOriginalEmail);
     expect(imported.newAuthorName).toBe(sampleRequest.newAuthorName);

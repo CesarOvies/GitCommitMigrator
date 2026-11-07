@@ -1,5 +1,6 @@
 import { CommitMetadata, MigrationProgress } from '../types';
 import { parseGitHubUrl } from './validator';
+import { Translations } from './localization';
 
 export class GitHubApiError extends Error {
   constructor(message: string, public status?: number, public responseData?: unknown) {
@@ -24,15 +25,70 @@ interface GitHubCommitResponse {
   parents: Array<{ sha: string }>;
 }
 
+export async function fetchRemoteBranches(
+  repoUrl: string,
+  patToken?: string,
+  messages?: Partial<Translations>
+): Promise<string[]> {
+  const parsed = parseGitHubUrl(repoUrl);
+  if (!parsed) {
+    const errorMsg = messages?.errInvalidRepoUrl
+      ? messages.errInvalidRepoUrl.replace('{0}', repoUrl)
+      : `URL do repositório inválida: ${repoUrl}`;
+    throw new GitHubApiError(errorMsg);
+  }
+
+  const { owner, repo } = parsed;
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28'
+  };
+
+  if (patToken?.trim()) {
+    headers.Authorization = `Bearer ${patToken.trim()}`;
+  }
+
+  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=100`;
+  const res = await fetch(url, { headers });
+
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new GitHubApiError(messages?.errPatInvalidOrExpired || 'Token de acesso (PAT) inválido ou expirado.', 401);
+    }
+    if (res.status === 404) {
+      const msg = messages?.errRepoNotFoundOrPrivate
+        ? messages.errRepoNotFoundOrPrivate.replace('{0}', `${owner}/${repo}`)
+        : `Repositório não encontrado ou privado: ${owner}/${repo}. Se for privado, informe um PAT de origem.`;
+      throw new GitHubApiError(msg, 404);
+    }
+    if (res.status === 403) {
+      const remaining = res.headers.get('x-ratelimit-remaining');
+      if (remaining === '0') {
+        throw new GitHubApiError(messages?.errRateLimitExceeded || 'Limite de requisições da API do GitHub atingido (Rate Limit). Use um PAT para aumentar o limite.', 403);
+      }
+    }
+    const errText = await res.text();
+    throw new GitHubApiError(`Falha ao consultar branches do GitHub (${res.status}): ${errText}`, res.status);
+  }
+
+  const data: Array<{ name: string }> = await res.json();
+  return data.map((b) => b.name);
+}
+
 export async function fetchRemoteCommits(
   repoUrl: string,
   filterEmail: string,
   patToken?: string,
-  onProgress?: (loaded: number) => void
+  onProgress?: (loaded: number) => void,
+  messages?: Partial<Translations>,
+  branch?: string
 ): Promise<{ commits: CommitMetadata[]; totalFound: number }> {
   const parsed = parseGitHubUrl(repoUrl);
   if (!parsed) {
-    throw new GitHubApiError(`URL do repositório inválida: ${repoUrl}`);
+    const errorMsg = messages?.errInvalidRepoUrl
+      ? messages.errInvalidRepoUrl.replace('{0}', repoUrl)
+      : `URL do repositório inválida: ${repoUrl}`;
+    throw new GitHubApiError(errorMsg);
   }
 
   const { owner, repo } = parsed;
@@ -50,26 +106,37 @@ export async function fetchRemoteCommits(
   let page = 1;
   const perPage = 100;
   const normalizedFilterEmail = filterEmail.trim().toLowerCase();
+  const branchParam = branch?.trim() ? `&sha=${encodeURIComponent(branch.trim())}` : '';
 
   while (true) {
-    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=${perPage}&page=${page}`;
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=${perPage}&page=${page}${branchParam}`;
     const res = await fetch(url, { headers });
 
     if (!res.ok) {
       if (res.status === 401) {
-        throw new GitHubApiError('Token de acesso (PAT) inválido ou expirado.', 401);
+        throw new GitHubApiError(messages?.errPatInvalidOrExpired || 'Token de acesso (PAT) inválido ou expirado.', 401);
       }
       if (res.status === 404) {
-        throw new GitHubApiError(`Repositório não encontrado ou privado: ${owner}/${repo}. Se for privado, informe um PAT de origem.`, 404);
+        const errorMsg = messages?.errRepoNotFoundOrPrivate
+          ? messages.errRepoNotFoundOrPrivate.replace('{0}', `${owner}/${repo}`)
+          : `Repositório não encontrado ou privado: ${owner}/${repo}. Se for privado, informe um PAT de origem.`;
+        throw new GitHubApiError(errorMsg, 404);
       }
       if (res.status === 403) {
         const remaining = res.headers.get('x-ratelimit-remaining');
         if (remaining === '0') {
-          throw new GitHubApiError('Limite de requisições da API do GitHub atingido (Rate Limit). Use um PAT para aumentar o limite.', 403);
+          throw new GitHubApiError(
+            messages?.errRateLimitExceeded ||
+            'Limite de requisições da API do GitHub atingido (Rate Limit). Use um PAT para aumentar o limite.',
+            403
+          );
         }
       }
       const errText = await res.text();
-      throw new GitHubApiError(`Falha ao consultar commits do GitHub (${res.status}): ${errText}`, res.status);
+      const failMsg = messages?.errFetchCommitsFailed
+        ? messages.errFetchCommitsFailed.replace('{0}', String(res.status)).replace('{1}', errText)
+        : `Falha ao consultar commits do GitHub (${res.status}): ${errText}`;
+      throw new GitHubApiError(failMsg, res.status);
     }
 
     const data: GitHubCommitResponse[] = await res.json();
@@ -119,11 +186,15 @@ export async function pushGhostCommits(
   commitsToMigrate: CommitMetadata[],
   newAuthorName: string,
   newAuthorEmail: string,
-  onProgress?: (progress: MigrationProgress) => void
+  onProgress?: (progress: MigrationProgress) => void,
+  messages?: Partial<Translations>
 ): Promise<{ totalMigrated: number; finalCommitSha: string; branchUrl: string }> {
   const parsed = parseGitHubUrl(targetRepoUrl);
   if (!parsed) {
-    throw new GitHubApiError(`URL do repositório de destino inválida: ${targetRepoUrl}`);
+    const errorMsg = messages?.errInvalidTargetRepoUrl
+      ? messages.errInvalidTargetRepoUrl.replace('{0}', targetRepoUrl)
+      : `URL do repositório de destino inválida: ${targetRepoUrl}`;
+    throw new GitHubApiError(errorMsg);
   }
 
   const { owner, repo } = parsed;
@@ -151,7 +222,10 @@ export async function pushGhostCommits(
     return res.json() as Promise<T>;
   }
 
-  onProgress?.({ percentage: 5, statusText: 'Verificando repositório de destino...' });
+  onProgress?.({
+    percentage: 5,
+    statusText: messages?.statusVerifyingTarget || 'Verificando repositório de destino...'
+  });
 
   // 1. Check if target repo exists and get default branch
   let currentTipSha: string | null = null;
@@ -173,7 +247,10 @@ export async function pushGhostCommits(
 
   // 2. If branch does not exist or repo is empty, initialize it with MIGRATION_INFO.md
   if (isNewBranch || !currentTipSha || !currentTreeSha) {
-    onProgress?.({ percentage: 10, statusText: 'Criando commit inicial (MIGRATION_INFO.md)...' });
+    onProgress?.({
+      percentage: 10,
+      statusText: messages?.statusInitialCommit || 'Criando commit inicial (MIGRATION_INFO.md)...'
+    });
 
     // Create tree with MIGRATION_INFO.md
     const initialTree = await ghRequest<{ sha: string }>('/git/trees', {
@@ -287,16 +364,23 @@ export async function pushGhostCommits(
     createdCount++;
 
     const pct = 15 + Math.round(((i + 1) / totalCommits) * 75);
+    const reconstructingText = messages?.statusReconstructingHistory
+      ? messages.statusReconstructingHistory.replace('{0}', String(i + 1)).replace('{1}', String(totalCommits))
+      : `Criando ghost commits (${i + 1}/${totalCommits})...`;
+
     onProgress?.({
       percentage: pct,
-      statusText: `Criando ghost commits (${i + 1}/${totalCommits})...`,
+      statusText: reconstructingText,
       currentStep: i + 1,
       totalSteps: totalCommits
     });
   }
 
   // 5. Update main branch reference to the final ghost commit
-  onProgress?.({ percentage: 95, statusText: 'Atualizando branch refs/heads/main...' });
+  onProgress?.({
+    percentage: 95,
+    statusText: messages?.statusPushingToRemote || 'Atualizando branch refs/heads/main...'
+  });
 
   await ghRequest('/git/refs/heads/main', {
     method: 'PATCH',
@@ -306,7 +390,10 @@ export async function pushGhostCommits(
     })
   });
 
-  onProgress?.({ percentage: 100, statusText: 'Migração concluída com sucesso!' });
+  onProgress?.({
+    percentage: 100,
+    statusText: messages?.statusCompleted || 'Migração concluída com sucesso!'
+  });
 
   return {
     totalMigrated: createdCount,

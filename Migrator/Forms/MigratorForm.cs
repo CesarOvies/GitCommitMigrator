@@ -39,6 +39,9 @@ public class MigratorForm : Form
     private readonly TextBox txtSourceRepo;
     private readonly Label lblSourcePatToken;
     private readonly TextBox txtSourcePatToken;
+    private readonly Label lblSourceBranch;
+    private readonly ComboBox cmbSourceBranch;
+    private readonly Button btnFetchBranches;
     private readonly Label lblRemoteUrl;
     private readonly TextBox txtRemoteUrl;
     private readonly Label lblOriginalEmail;
@@ -127,6 +130,9 @@ public class MigratorForm : Form
         (lblSourceRepo, txtSourceRepo) = AddFolderField(panel, () => LocalizationService.Get(currentLanguage).SourceRepoBrowseTitle);
         (lblSourcePatToken, txtSourcePatToken) = AddField(panel);
         txtSourcePatToken.PasswordChar = '•';
+        (lblSourceBranch, cmbSourceBranch, btnFetchBranches) = AddBranchField(panel);
+        cmbSourceBranch.Items.Add(LocalizationService.Get(currentLanguage).SourceBranchAll);
+        cmbSourceBranch.SelectedIndex = 0;
         (lblRemoteUrl, txtRemoteUrl) = AddField(panel);
         (lblOriginalEmail, txtOriginalEmail) = AddField(panel);
         (lblNewName, txtNewName) = AddField(panel);
@@ -452,6 +458,22 @@ public class MigratorForm : Form
     {
         txtSourceRepo.Text = request.SourceRepoPath ?? string.Empty;
         txtSourcePatToken.Text = request.SourcePatToken ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(request.SourceBranch))
+        {
+            if (!cmbSourceBranch.Items.Contains(request.SourceBranch))
+            {
+                cmbSourceBranch.Items.Add(request.SourceBranch);
+            }
+            cmbSourceBranch.SelectedItem = request.SourceBranch;
+        }
+        else if (cmbSourceBranch.Items.Count > 0)
+        {
+            cmbSourceBranch.SelectedIndex = 0;
+        }
+        else
+        {
+            cmbSourceBranch.Text = string.Empty;
+        }
         txtRemoteUrl.Text = request.TargetRemoteUrl ?? string.Empty;
         txtOriginalEmail.Text = request.FilterOriginalEmail ?? string.Empty;
         txtNewName.Text = request.NewAuthorName ?? string.Empty;
@@ -484,6 +506,18 @@ public class MigratorForm : Form
 
         lblSourcePatToken.Text = t.SourcePatTokenLabel;
         txtSourcePatToken.PlaceholderText = t.SourcePatTokenPlaceholder;
+
+        lblSourceBranch.Text = t.SourceBranchLabel;
+        btnFetchBranches.Text = t.FetchBranchesButton;
+        if (cmbSourceBranch.Items.Count > 0)
+        {
+            int sel = cmbSourceBranch.SelectedIndex;
+            cmbSourceBranch.Items[0] = t.SourceBranchAll;
+            if (sel == 0)
+            {
+                cmbSourceBranch.SelectedIndex = 0;
+            }
+        }
 
         lblRemoteUrl.Text = t.RemoteUrlLabel;
         txtRemoteUrl.PlaceholderText = t.RemoteUrlPlaceholder;
@@ -646,6 +680,10 @@ public class MigratorForm : Form
             if (dialog.ShowDialog(this) == DialogResult.OK)
             {
                 textBox.Text = dialog.SelectedPath;
+                if (cmbSourceBranch is not null && btnFetchBranches is not null)
+                {
+                    _ = FetchBranchesAsync(cmbSourceBranch, btnFetchBranches);
+                }
             }
         };
 
@@ -656,17 +694,145 @@ public class MigratorForm : Form
         return (label, textBox);
     }
 
-    private RunMigrationRequest BuildRequest() => new()
+    private (Label Label, ComboBox Input, Button FetchButton) AddBranchField(FlowLayoutPanel panel)
     {
-        SourceRepoPath = txtSourceRepo.Text,
-        SourcePatToken = txtSourcePatToken.Text,
-        TargetRemoteUrl = txtRemoteUrl.Text,
-        FilterOriginalEmail = txtOriginalEmail.Text,
-        NewAuthorName = txtNewName.Text,
-        NewAuthorEmail = txtNewEmail.Text,
-        TargetPatToken = txtPatToken.Text,
-        UseAdvancedSettings = chkAdvancedSettings.Checked
-    };
+        var label = new Label
+        {
+            Width = FieldWidth,
+            AutoSize = true,
+            Font = labelFont,
+            ForeColor = TextSecondary,
+            Margin = new Padding(0, 9, 0, 4)
+        };
+        panel.Controls.Add(label);
+
+        var row = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            AutoSize = true,
+            AutoSizeMode = AutoSizeMode.GrowAndShrink,
+            BackColor = BgCanvas,
+            Margin = new Padding(0, 0, 0, 2)
+        };
+
+        const int fetchBtnWidth = 110;
+        int comboWidth = FieldWidth - fetchBtnWidth - 6;
+
+        var comboBox = new ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDown,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = BgInput,
+            ForeColor = TextPrimary,
+            Font = inputFont,
+            Width = comboWidth,
+            Margin = new Padding(0, 0, 6, 0)
+        };
+
+        var btnFetch = new Button
+        {
+            Width = fetchBtnWidth,
+            Height = 28,
+            Margin = new Padding(0),
+            FlatStyle = FlatStyle.Flat,
+            BackColor = BgButtonSubtle,
+            ForeColor = TextPrimary,
+            Font = smallFont,
+            Cursor = Cursors.Hand
+        };
+        btnFetch.FlatAppearance.BorderSize = 1;
+        btnFetch.FlatAppearance.BorderColor = BorderSubtle;
+        btnFetch.FlatAppearance.MouseOverBackColor = BorderSubtle;
+
+        btnFetch.Click += async (s, e) => await FetchBranchesAsync(comboBox, btnFetch);
+
+        row.Controls.Add(comboBox);
+        row.Controls.Add(btnFetch);
+        panel.Controls.Add(row);
+
+        return (label, comboBox, btnFetch);
+    }
+
+    private async Task FetchBranchesAsync(ComboBox comboBox, Button btnFetch)
+    {
+        string sourcePath = txtSourceRepo.Text.Trim();
+        if (string.IsNullOrWhiteSpace(sourcePath))
+        {
+            errorProvider.SetError(txtSourceRepo.Tag as Control ?? txtSourceRepo, LocalizationService.Get(currentLanguage).ErrSourceEmpty);
+            return;
+        }
+
+        UiTranslations t = LocalizationService.Get(currentLanguage);
+        btnFetch.Enabled = false;
+        btnFetch.Text = t.FetchingBranches;
+        errorProvider.SetError(comboBox, string.Empty);
+
+        try
+        {
+            string pat = txtSourcePatToken.Text.Trim();
+            List<string> branches = await Task.Run(() => MigrationService.GetSourceBranches(sourcePath, pat));
+
+            string? currentSelection = comboBox.Text;
+            comboBox.Items.Clear();
+            comboBox.Items.Add(t.SourceBranchAll);
+
+            foreach (string branch in branches)
+            {
+                comboBox.Items.Add(branch);
+            }
+
+            if (!string.IsNullOrWhiteSpace(currentSelection) && branches.Contains(currentSelection, StringComparer.OrdinalIgnoreCase))
+            {
+                comboBox.SelectedItem = branches.First(b => b.Equals(currentSelection, StringComparison.OrdinalIgnoreCase));
+            }
+            else
+            {
+                comboBox.SelectedIndex = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorLogService.LogException(ex, "FetchBranches", [sourcePath]);
+            errorProvider.SetError(comboBox, t.FetchBranchesError);
+        }
+        finally
+        {
+            btnFetch.Enabled = true;
+            btnFetch.Text = t.FetchBranchesButton;
+        }
+    }
+
+    private RunMigrationRequest BuildRequest()
+    {
+        string branch = string.Empty;
+        if (cmbSourceBranch.SelectedIndex > 0)
+        {
+            branch = cmbSourceBranch.Text.Trim();
+        }
+        else if (cmbSourceBranch.SelectedIndex < 0 && !string.IsNullOrWhiteSpace(cmbSourceBranch.Text))
+        {
+            string typed = cmbSourceBranch.Text.Trim();
+            UiTranslations t = LocalizationService.Get(currentLanguage);
+            if (!typed.Equals(t.SourceBranchAll, StringComparison.OrdinalIgnoreCase))
+            {
+                branch = typed;
+            }
+        }
+
+        return new()
+        {
+            SourceRepoPath = txtSourceRepo.Text,
+            SourcePatToken = txtSourcePatToken.Text,
+            SourceBranch = branch,
+            TargetRemoteUrl = txtRemoteUrl.Text,
+            FilterOriginalEmail = txtOriginalEmail.Text,
+            NewAuthorName = txtNewName.Text,
+            NewAuthorEmail = txtNewEmail.Text,
+            TargetPatToken = txtPatToken.Text,
+            UseAdvancedSettings = chkAdvancedSettings.Checked
+        };
+    }
 
     private Dictionary<string, string> UpdateErrorProviderIcons(RunMigrationRequest request)
     {

@@ -6,6 +6,8 @@ public class RunMigrationRequest
 
     public string SourcePatToken { get; set; } = string.Empty;
 
+    public string SourceBranch { get; set; } = string.Empty;
+
     public string TargetRemoteUrl { get; set; } = string.Empty;
 
     public string FilterOriginalEmail { get; set; } = string.Empty;

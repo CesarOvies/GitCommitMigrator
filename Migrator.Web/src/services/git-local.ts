@@ -1,5 +1,6 @@
 import git from 'isomorphic-git';
 import { CommitMetadata } from '../types';
+import { Translations } from './localization';
 
 interface FsError extends Error {
   code?: string;
@@ -131,16 +132,48 @@ function createFsFromDirectoryHandle(rootDirHandle: FileSystemDirectoryHandle) {
   return { promises };
 }
 
+export async function listLocalBranches(
+  rootDirHandle: FileSystemDirectoryHandle,
+  translations?: Partial<Translations>
+): Promise<string[]> {
+  try {
+    await rootDirHandle.getDirectoryHandle('.git');
+  } catch {
+    throw new Error(
+      translations?.errNoValidGitRepo ||
+      'A pasta selecionada não contém um repositório Git válido (.git não encontrado).'
+    );
+  }
+
+  const fs = createFsFromDirectoryHandle(rootDirHandle);
+  try {
+    const branches = await git.listBranches({ fs, dir: '/' });
+    return branches;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      translations?.errReadingLocalHistory
+        ? translations.errReadingLocalHistory.replace('{0}', msg)
+        : `Erro ao listar branches do repositório local: ${msg}`
+    );
+  }
+}
+
 export async function extractCommitsFromLocalDirectory(
   rootDirHandle: FileSystemDirectoryHandle,
   filterEmail: string,
-  onProgress?: (count: number) => void
+  onProgress?: (count: number) => void,
+  translations?: Partial<Translations>,
+  branch?: string
 ): Promise<{ commits: CommitMetadata[]; totalFound: number }> {
   // Check if .git exists in root
   try {
     await rootDirHandle.getDirectoryHandle('.git');
   } catch {
-    throw new Error('A pasta selecionada não contém um repositório Git válido (.git não encontrado).');
+    throw new Error(
+      translations?.errNoValidGitRepo ||
+      'A pasta selecionada não contém um repositório Git válido (.git não encontrado).'
+    );
   }
 
   const fs = createFsFromDirectoryHandle(rootDirHandle);
@@ -150,10 +183,11 @@ export async function extractCommitsFromLocalDirectory(
   let totalFound = 0;
 
   try {
-    // Read commit logs reachable from HEAD
+    // Read commit logs reachable from branch or HEAD
     const logEntries = await git.log({
       fs,
       dir: '/',
+      ref: branch?.trim() || undefined,
       depth: 5000
     });
 
@@ -175,7 +209,11 @@ export async function extractCommitsFromLocalDirectory(
 
     onProgress?.(commits.length);
   } catch (err: unknown) {
-    throw new Error(`Erro ao ler histórico do repositório local: ${err instanceof Error ? err.message : String(err)}`);
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    const formatted = translations?.errReadingLocalHistory
+      ? translations.errReadingLocalHistory.replace('{0}', errorMsg)
+      : `Erro ao ler histórico do repositório local: ${errorMsg}`;
+    throw new Error(formatted);
   }
 
   // Sort chronological ascending
