@@ -1,7 +1,8 @@
 import React from 'react';
-import { GitBranch, Github, Globe } from 'lucide-react';
+import { Github, Globe } from 'lucide-react';
 import { AppLanguage } from '../types';
 import { getTranslation } from '../services/localization';
+import logoImg from '../assets/logo.png';
 
 interface HeaderProps {
   currentLang: AppLanguage;
@@ -16,9 +17,11 @@ export const Header: React.FC<HeaderProps> = ({ currentLang, onLanguageChange })
       <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
         {/* Brand */}
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-[#238636] flex items-center justify-center text-white shrink-0 shadow-sm">
-            <GitBranch className="w-5 h-5" />
-          </div>
+          <img
+            src={logoImg}
+            alt="Git Commit Migrator"
+            className="w-8 h-8 rounded-lg object-contain shrink-0"
+          />
           <div className="truncate">
             <h1 className="text-base sm:text-lg font-bold text-[#E6EDF3] leading-tight flex items-center gap-2 truncate">
               {t.windowTitle}
