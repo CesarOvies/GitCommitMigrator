@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run GitCommitMigrator",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/Migrator/bin/Debug/net8.0-windows/win-x64/Git.Commit.Migrator.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/Migrator",
+      "stopAtEntry": false,
+      "console": "internalConsole"
+    }
+  ]
+}
+
