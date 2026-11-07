@@ -20,13 +20,19 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 | Arquivo | Símbolos Principais | Responsabilidade |
 |---|---|---|
 | `Migrator/Program.cs` | `Migrator.Program` | Ponto de entrada (`[STAThread] Main`). Inicializa o WinForms e abre `MigratorForm`. |
-| `Migrator/Forms/MigratorForm.cs` | `Migrator.Forms.MigratorForm` | Renderiza formulário com 7 `TextBox` e 1 `Button`. Executa `MigrationService.RunMigration` de forma assíncrona via `Task.Run`. |
-| `Migrator/Services/MigrationService.cs` | `Migrator.Services.MigrationService` | Contém toda a regra de negócio Git via `LibGit2Sharp`. Métodos estáticos: `RunMigration`, `ExtractCommits`, `ReconstructHistory`, `PushToRemote`. |
-| `Migrator/Services/ErrorLogService.cs` | `Migrator.Services.ErrorLogService` | Grava exceptions (mensagem + stack trace + inner) em `error_yyyyMMdd.log` na pasta do executável. Dados sensíveis (PATs, e-mails, nome do autor, credenciais em URL, tokens GitHub) são criptografados via DPAPI (`CurrentUser`) como `[ENC:base64]`; `Decrypt` reverte no mesmo usuário/máquina. |
+| `Migrator/Forms/MigratorForm.cs` | `Migrator.Forms.MigratorForm` | Renderiza formulário principal, banner discreto de atualização e integra ações assíncronas. |
+| `Migrator/Forms/CommitSelectionForm.cs` | `Migrator.Forms.CommitSelectionForm` | Diálogo modal escuro para seleção avançada de commits (todos, único ou por período). |
+| `Migrator/Forms/UpdateDialogForm.cs` | `Migrator.Forms.UpdateDialogForm` | Diálogo modal escuro centralizado com comparador de versão, release notes e barra de download/restart. |
+| `Migrator/Services/MigrationService.cs` | `Migrator.Services.MigrationService` | Contém toda a regra de negócio Git via `LibGit2Sharp`. Métodos: `RunMigration`, `ExtractCommits`, `ReconstructHistory`, `PushToRemote`. |
+| `Migrator/Services/UpdateService.cs` | `Migrator.Services.UpdateService` | Verificação assíncrona de releases no GitHub, download em stream e script PowerShell de restart atômico. |
+| `Migrator/Services/LocalizationService.cs` | `Migrator.Services.LocalizationService` | Dicionário de traduções centralizado nos 3 idiomas suportados: `PtBr`, `EnUs` e `Es`. |
+| `Migrator/Services/ErrorLogService.cs` | `Migrator.Services.ErrorLogService` | Grava exceptions em `error_yyyyMMdd.log`. Dados sensíveis criptografados via DPAPI (`CurrentUser`) como `[ENC:base64]`. |
 | `Migrator/Models/RunMigrationRequest.cs` | `Migrator.Models.RunMigrationRequest` | DTO de entrada com os 7 parâmetros preenchidos na UI. |
 | `Migrator/Models/CommitMetadata.cs` | `Migrator.Models.CommitMetadata` | DTO representando um commit extraído (`Message` e `When`). |
-| `Migrator.Tests/Services/MigrationServiceTests.cs` | `Migrator.Tests.Services.MigrationServiceTests` | Testes automatizados (xUnit) validando extração, reconstrução de histórico e push E2E em repositório bare local. |
-| `.github/workflows/ci.yml` | `CI & PR Policy` | Workflow do GitHub Actions que valida governança de branches em PRs (`* -> develop` e `develop -> main`), roda `dotnet test` e fecha automaticamente PRs inválidos ou com testes quebrados. O PR `develop -> main` é aberto manualmente. |
+| `Migrator/Models/UpdateInfo.cs` | `Migrator.Models.UpdateInfo` | DTO representando o resultado da verificação de release/update. |
+| `Migrator.Tests/Services/MigrationServiceTests.cs` | `Migrator.Tests.Services.MigrationServiceTests` | Testes automatizados (xUnit) validando extração, reconstrução de histórico e push E2E. |
+| `Migrator.Tests/Services/UpdateServiceTests.cs` | `Migrator.Tests.Services.UpdateServiceTests` | Testes automatizados validando parsing semântico de versões, comparador, mock HTTP e scripts. |
+| `.github/workflows/ci.yml` | `CI & PR Policy` | Workflow do GitHub Actions que valida governança de branches em PRs (`* -> develop` e `develop -> main`), roda `dotnet test` e fecha automaticamente PRs inválidos ou quebrados. |
 | `.github/workflows/sync-develop.yml` | `Sync Develop with Main` | Faz merge automático de `main` em `develop` após qualquer push na `main`. |
 | `.github/workflows/release.yml` | `Release & Package Deploy` | Ao entrar commit na `main`, gera tag `v1.0.x`, empacota versão Portable `.zip` (`win-x64`), calcula hashes SHA-256/SHA-512, roda scan Defender + VirusTotal, gera atestado SLSA, publica no GitHub Packages e cria GitHub Release. |
 
@@ -73,3 +79,54 @@ dotnet run --project Migrator/Migrator.csproj
 # Publish Single-File
 dotnet publish Migrator/Migrator.csproj -c Release
 ```
+
+## 7. Diretrizes de UI e Dark Theme (Prevenção de Telas Brancas)
+
+- **Proibido usar `MessageBox.Show` nativo** para diálogos principais e fluxos da aplicação (o Win32 renderiza caixas de diálogo brancas que quebram o tema escuro).
+- Criar sempre modais baseados em `Form` (`FixedDialog`, `CenterParent`, `ShowInTaskbar = false`) com a paleta oficial GitHub Dark:
+  - `BgCanvas`: `Color.FromArgb(13, 17, 23)` (`#0D1117`)
+  - `BgInput`: `Color.FromArgb(22, 27, 34)` (`#161B22`)
+  - `BgButtonSubtle`: `Color.FromArgb(33, 38, 45)` (`#21262D`)
+  - `BorderSubtle`: `Color.FromArgb(48, 54, 61)` (`#30363D`)
+  - `BorderFocus`: `Color.FromArgb(56, 139, 253)` (`#388BFD`)
+  - `TextPrimary`: `Color.FromArgb(230, 237, 243)` (`#E6EDF3`)
+  - `TextSecondary`: `Color.FromArgb(139, 148, 158)` (`#8B949E`)
+  - `AccentGreen`: `Color.FromArgb(35, 134, 54)` (`#238636`)
+  - `AccentGreenBorder`: `Color.FromArgb(63, 185, 80)` (`#3FB950`)
+  - `ErrorRed`: `Color.FromArgb(248, 81, 73)` (`#F85149`)
+- Em todo `Form`, implementar em `OnHandleCreated`:
+  ```csharp
+  if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
+  {
+      int useDarkMode = 1;
+      _ = DwmSetWindowAttribute(Handle, 20, ref useDarkMode, sizeof(int));
+  }
+  ```
+- **Alinhamento e Centralização**:
+  - Títulos de cabeçalho e comparadores de valor devem ser centralizados (`TextAlign = ContentAlignment.MiddleCenter`).
+  - Pares de botões de ação (`[Depois / Cancelar]` e `[Ação Principal]`) devem ser centralizados na largura do diálogo calculando matematicamente o `startX`.
+
+## 8. Diretrizes de Internacionalização (i18n)
+
+- Todo texto exibido para o usuário final deve ser registrado em [`Migrator/Services/LocalizationService.cs`](file:///Migrator/Services/LocalizationService.cs).
+- Adições em `UiTranslations` exigem valores obrigatórios nos 3 idiomas:
+  - `PtBr` (Português do Brasil)
+  - `EnUs` (Inglês)
+  - `Es` (Espanhol)
+- O formulário principal deve atualizar todas as strings reativamente ao trocar de idioma no `cmbLanguage`.
+
+## 9. Playbook para Agentes (Como Corrigir Bugs ou Criar Melhorias)
+
+### Fluxo para Correção de Bugs (Bug Fix)
+1. **Reprodução**: Escrever primeiro um teste unitário em `Migrator.Tests` reproduzindo a falha ou o comportamento inconsistente.
+2. **Branch**: Criar branch derivada de `develop`: `git checkout -b fix/descricao-do-bug`.
+3. **Cirurgia**: Corrigir apenas a causa raiz no arquivo de negócio/serviço relevante (sem tocar em código ou formatação adjacente desnecessária).
+4. **Verificação**: Rodar `dotnet test GitCommitMigration.slnx` e garantir 100% dos testes passando.
+5. **PR**: Abrir Pull Request com destino `develop` (`--base develop`).
+
+### Fluxo para Implementação de Melhorias / Features
+1. **Planejamento e YAGNI**: Avaliar reutilização antes de criar novos arquivos. Manter arquitetura enxuta (serviços estáticos, DTOs imutáveis, controles WinForms declarativos).
+2. **Branch**: Criar branch derivada de `develop`: `git checkout -b feature/nome-da-feature`.
+3. **UI / Textos**: Se houver interface, aplicar o Dark Theme (Seção 7) e registrar todas as strings em `LocalizationService.cs` (Seção 8).
+4. **Testes Unitários**: Criar suíte em `Migrator.Tests` cobrindo cenários válidos, inválidos e tratamento de erro sem throw silencioso.
+5. **Validação e PR**: Executar `dotnet build` e `dotnet test`. Criar PR contra `develop`.

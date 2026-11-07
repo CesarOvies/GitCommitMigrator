@@ -70,7 +70,19 @@ public sealed record UiTranslations(
     string CancelSelectionButton,
     string ErrInvalidPeriodRange,
     string ErrNoCommitsSelected,
-    string StatusCanceled);
+    string StatusCanceled,
+    string UpdateAvailableTitle,
+    string UpdateAvailablePromptMessage,
+    string UpdateBannerText,
+    string UpdateNowButton,
+    string UpdateDismissButton,
+    string UpdateDownloadingStatus,
+    string UpdateApplyingStatus,
+    string UpdateFailedMessage,
+    string UpdateCurrentVersionLabel,
+    string UpdateNewVersionLabel,
+    string UpdateReleaseNotesLabel,
+    string UpdateReadySubtitle);
 
 public static class LocalizationService
 {
@@ -137,7 +149,19 @@ public static class LocalizationService
             CancelSelectionButton: "Cancelar",
             ErrInvalidPeriodRange: "A data inicial não pode ser maior que a data final.",
             ErrNoCommitsSelected: "Nenhum commit encontrado para a seleção informada.",
-            StatusCanceled: "Migração cancelada pelo usuário."),
+            StatusCanceled: "Migração cancelada pelo usuário.",
+            UpdateAvailableTitle: "Atualização Disponível",
+            UpdateAvailablePromptMessage: "Uma nova versão do Git Commit Migrator está disponível!\n\n• Versão atual: v{0}\n• Nova versão: v{1}\n\nDeseja atualizar agora?",
+            UpdateBannerText: "Nova versão disponível: v{0} (atual: v{1})",
+            UpdateNowButton: "Atualizar",
+            UpdateDismissButton: "Depois",
+            UpdateDownloadingStatus: "Baixando atualização ({0}%)...",
+            UpdateApplyingStatus: "Instalando atualização e reiniciando...",
+            UpdateFailedMessage: "Não foi possível concluir a atualização automática:",
+            UpdateCurrentVersionLabel: "Versão Atual",
+            UpdateNewVersionLabel: "Nova Versão",
+            UpdateReleaseNotesLabel: "Notas da Versão:",
+            UpdateReadySubtitle: "Uma nova versão do Git Commit Migrator está disponível para atualização."),
 
         [AppLanguage.EnUs] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -200,7 +224,19 @@ public static class LocalizationService
             CancelSelectionButton: "Cancel",
             ErrInvalidPeriodRange: "Start date cannot be after end date.",
             ErrNoCommitsSelected: "No commits found for the selected criteria.",
-            StatusCanceled: "Migration canceled by user."),
+            StatusCanceled: "Migration canceled by user.",
+            UpdateAvailableTitle: "Update Available",
+            UpdateAvailablePromptMessage: "A new version of Git Commit Migrator is available!\n\n• Current version: v{0}\n• New version: v{1}\n\nDo you want to update now?",
+            UpdateBannerText: "Update available: v{0} (current: v{1})",
+            UpdateNowButton: "Update",
+            UpdateDismissButton: "Later",
+            UpdateDownloadingStatus: "Downloading update ({0}%)...",
+            UpdateApplyingStatus: "Installing update and restarting...",
+            UpdateFailedMessage: "Failed to complete automatic update:",
+            UpdateCurrentVersionLabel: "Current Version",
+            UpdateNewVersionLabel: "New Version",
+            UpdateReleaseNotesLabel: "Release Notes:",
+            UpdateReadySubtitle: "A new version of Git Commit Migrator is available for update."),
 
         [AppLanguage.Es] = new UiTranslations(
             WindowTitle: "Git Commit Migrator",
@@ -263,7 +299,19 @@ public static class LocalizationService
             CancelSelectionButton: "Cancelar",
             ErrInvalidPeriodRange: "La fecha inicial no puede ser mayor que la fecha final.",
             ErrNoCommitsSelected: "No se encontraron commits para la selección indicada.",
-            StatusCanceled: "Migración cancelada por el usuario.")
+            StatusCanceled: "Migración cancelada por el usuario.",
+            UpdateAvailableTitle: "Actualización Disponible",
+            UpdateAvailablePromptMessage: "¡Una nueva versión de Git Commit Migrator está disponible!\n\n• Versión actual: v{0}\n• Nueva versión: v{1}\n\n¿Desea actualizar ahora?",
+            UpdateBannerText: "Actualización disponible: v{0} (actual: v{1})",
+            UpdateNowButton: "Actualizar",
+            UpdateDismissButton: "Más tarde",
+            UpdateDownloadingStatus: "Descargando actualización ({0}%)...",
+            UpdateApplyingStatus: "Instalando actualización y reiniciando...",
+            UpdateFailedMessage: "No se pudo completar la actualización automática:",
+            UpdateCurrentVersionLabel: "Versión Actual",
+            UpdateNewVersionLabel: "Nueva Versión",
+            UpdateReleaseNotesLabel: "Notas de la Versión:",
+            UpdateReadySubtitle: "Una nueva versión de Git Commit Migrator está disponible para actualizar."),
     };
 
     public static UiTranslations Get(AppLanguage language) => Translations[language];
