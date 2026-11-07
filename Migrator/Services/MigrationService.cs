@@ -1,6 +1,7 @@
 using System.Net.Mail;
 using System.Text.Json;
 using LibGit2Sharp;
+using LibGit2Sharp.Handlers;
 using Migrator.Models;
 
 namespace Migrator.Services;
@@ -143,7 +144,7 @@ public static class MigrationService
         string effectiveSourcePat = !string.IsNullOrEmpty(sourcePat) ? sourcePat : targetPat;
 
         progress?.Report(new MigrationProgress(5, t.StatusExtractingCommits));
-        (List<CommitMetadata> commits, int totalFound) = ExtractCommitsWithStats(source, originalEmail, effectiveSourcePat);
+        (List<CommitMetadata> commits, int totalFound) = ExtractCommitsWithStats(source, originalEmail, effectiveSourcePat, request.SourceBranch);
 
         if (request.UseAdvancedSettings && selectCommitsCallback is not null)
         {
@@ -194,8 +195,47 @@ public static class MigrationService
         return logFilePath;
     }
 
-    public static List<CommitMetadata> ExtractCommits(string sourceRepoPath, string filterOriginalEmail, string? patToken = null)
-        => ExtractCommitsWithStats(sourceRepoPath, filterOriginalEmail, patToken).Commits;
+    public static List<string> GetSourceBranches(string sourceRepoPath, string? patToken = null)
+    {
+        if (string.IsNullOrWhiteSpace(sourceRepoPath))
+        {
+            return [];
+        }
+
+        string trimmed = sourceRepoPath.Trim();
+
+        if (IsRemoteUrl(trimmed))
+        {
+            CredentialsHandler? creds = string.IsNullOrWhiteSpace(patToken)
+                ? null
+                : (_url, _user, _cred) => new UsernamePasswordCredentials { Username = "PAT", Password = patToken.Trim() };
+
+            IEnumerable<Reference> remoteRefs = Repository.ListRemoteReferences(trimmed, creds);
+            return remoteRefs
+                .Where(r => r.CanonicalName.StartsWith("refs/heads/", StringComparison.OrdinalIgnoreCase))
+                .Select(r => r.CanonicalName["refs/heads/".Length..])
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(b => b)
+                .ToList();
+        }
+
+        if (!Directory.Exists(trimmed) || !Repository.IsValid(trimmed))
+        {
+            return [];
+        }
+
+        using Repository repo = new(trimmed);
+        return repo.Branches
+            .Select(b => b.FriendlyName.StartsWith("origin/", StringComparison.OrdinalIgnoreCase)
+                ? b.FriendlyName["origin/".Length..]
+                : b.FriendlyName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(b => b)
+            .ToList();
+    }
+
+    public static List<CommitMetadata> ExtractCommits(string sourceRepoPath, string filterOriginalEmail, string? patToken = null, string? sourceBranch = null)
+        => ExtractCommitsWithStats(sourceRepoPath, filterOriginalEmail, patToken, sourceBranch).Commits;
 
     public static List<CommitMetadata> FilterCommitsByPeriod(
         IEnumerable<CommitMetadata> commits,
@@ -216,7 +256,11 @@ public static class MigrationService
             .ToList();
     }
 
-    private static (List<CommitMetadata> Commits, int TotalFound) ExtractCommitsWithStats(string sourceRepoPath, string filterOriginalEmail, string? patToken = null)
+    private static (List<CommitMetadata> Commits, int TotalFound) ExtractCommitsWithStats(
+        string sourceRepoPath,
+        string filterOriginalEmail,
+        string? patToken = null,
+        string? sourceBranch = null)
     {
         if (IsRemoteUrl(sourceRepoPath))
         {
@@ -235,7 +279,7 @@ public static class MigrationService
                 }
 
                 Repository.Clone(sourceRepoPath, tempClonePath, cloneOptions);
-                return ExtractCommitsFromLocalRepo(tempClonePath, filterOriginalEmail);
+                return ExtractCommitsFromLocalRepo(tempClonePath, filterOriginalEmail, sourceBranch);
             }
             finally
             {
@@ -243,10 +287,13 @@ public static class MigrationService
             }
         }
 
-        return ExtractCommitsFromLocalRepo(sourceRepoPath, filterOriginalEmail);
+        return ExtractCommitsFromLocalRepo(sourceRepoPath, filterOriginalEmail, sourceBranch);
     }
 
-    private static (List<CommitMetadata> Commits, int TotalFound) ExtractCommitsFromLocalRepo(string localRepoPath, string filterOriginalEmail)
+    private static (List<CommitMetadata> Commits, int TotalFound) ExtractCommitsFromLocalRepo(
+        string localRepoPath,
+        string filterOriginalEmail,
+        string? sourceBranch = null)
     {
         List<CommitMetadata> commitsToMigrate = new();
         int totalFound = 0;
@@ -255,9 +302,32 @@ public static class MigrationService
 
         CommitFilter filter = new()
         {
-            SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time,
-            IncludeReachableFrom = sourceRepo.Refs
+            SortBy = CommitSortStrategies.Topological | CommitSortStrategies.Time
         };
+
+        if (!string.IsNullOrWhiteSpace(sourceBranch))
+        {
+            string branchName = sourceBranch.Trim();
+            Branch? branch = sourceRepo.Branches[branchName]
+                ?? sourceRepo.Branches[$"origin/{branchName}"]
+                ?? sourceRepo.Branches.FirstOrDefault(b =>
+                    b.FriendlyName.Equals(branchName, StringComparison.OrdinalIgnoreCase) ||
+                    b.CanonicalName.Equals($"refs/heads/{branchName}", StringComparison.OrdinalIgnoreCase) ||
+                    b.CanonicalName.Equals($"refs/remotes/origin/{branchName}", StringComparison.OrdinalIgnoreCase));
+
+            if (branch?.Tip is not null)
+            {
+                filter.IncludeReachableFrom = branch.Tip;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Branch '{branchName}' não encontrada no repositório de origem.");
+            }
+        }
+        else
+        {
+            filter.IncludeReachableFrom = sourceRepo.Refs;
+        }
 
         ICommitLog allCommits = sourceRepo.Commits.QueryBy(filter);
 
