@@ -28,7 +28,8 @@ interface GitHubCommitResponse {
 export async function fetchRemoteBranches(
   repoUrl: string,
   patToken?: string,
-  messages?: Partial<Translations>
+  messages?: Partial<Translations>,
+  onProgress?: (count: number) => void
 ): Promise<string[]> {
   const parsed = parseGitHubUrl(repoUrl);
   if (!parsed) {
@@ -48,31 +49,50 @@ export async function fetchRemoteBranches(
     headers.Authorization = `Bearer ${patToken.trim()}`;
   }
 
-  const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=100`;
-  const res = await fetch(url, { headers });
+  const allBranches: string[] = [];
+  let page = 1;
+  const perPage = 100;
 
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new GitHubApiError(messages?.errPatInvalidOrExpired || 'Token de acesso (PAT) inválido ou expirado.', 401);
-    }
-    if (res.status === 404) {
-      const msg = messages?.errRepoNotFoundOrPrivate
-        ? messages.errRepoNotFoundOrPrivate.replace('{0}', `${owner}/${repo}`)
-        : `Repositório não encontrado ou privado: ${owner}/${repo}. Se for privado, informe um PAT de origem.`;
-      throw new GitHubApiError(msg, 404);
-    }
-    if (res.status === 403) {
-      const remaining = res.headers.get('x-ratelimit-remaining');
-      if (remaining === '0') {
-        throw new GitHubApiError(messages?.errRateLimitExceeded || 'Limite de requisições da API do GitHub atingido (Rate Limit). Use um PAT para aumentar o limite.', 403);
+  while (true) {
+    const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branches?per_page=${perPage}&page=${page}`;
+    const res = await fetch(url, { headers });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new GitHubApiError(messages?.errPatInvalidOrExpired || 'Token de acesso (PAT) inválido ou expirado.', 401);
       }
+      if (res.status === 404) {
+        const msg = messages?.errRepoNotFoundOrPrivate
+          ? messages.errRepoNotFoundOrPrivate.replace('{0}', `${owner}/${repo}`)
+          : `Repositório não encontrado ou privado: ${owner}/${repo}. Se for privado, informe um PAT de origem.`;
+        throw new GitHubApiError(msg, 404);
+      }
+      if (res.status === 403) {
+        const remaining = res.headers.get('x-ratelimit-remaining');
+        if (remaining === '0') {
+          throw new GitHubApiError(messages?.errRateLimitExceeded || 'Limite de requisições da API do GitHub atingido (Rate Limit). Use um PAT para aumentar o limite.', 403);
+        }
+      }
+      const errText = await res.text();
+      throw new GitHubApiError(`Falha ao consultar branches do GitHub (${res.status}): ${errText}`, res.status);
     }
-    const errText = await res.text();
-    throw new GitHubApiError(`Falha ao consultar branches do GitHub (${res.status}): ${errText}`, res.status);
+
+    const data: Array<{ name: string }> = await res.json();
+    if (data.length === 0) {
+      break;
+    }
+
+    allBranches.push(...data.map((b) => b.name));
+    onProgress?.(allBranches.length);
+
+    if (data.length < perPage) {
+      break;
+    }
+
+    page++;
   }
 
-  const data: Array<{ name: string }> = await res.json();
-  return data.map((b) => b.name);
+  return allBranches;
 }
 
 export async function fetchRemoteCommits(

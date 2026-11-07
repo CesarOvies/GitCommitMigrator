@@ -53,7 +53,12 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
   const t = getTranslation(lang);
   const [showTargetPat, setShowTargetPat] = useState(false);
   const [showSourcePat, setShowSourcePat] = useState(false);
+  const [branchSearch, setBranchSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredBranches = availableBranches.filter((b) =>
+    b.toLowerCase().includes(branchSearch.toLowerCase().trim())
+  );
 
   const updateField = <K extends keyof RunMigrationRequest>(key: K, value: RunMigrationRequest[K]) => {
     onChange({ ...request, [key]: value });
@@ -245,6 +250,11 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
             <label className="text-xs font-medium text-[#E6EDF3] flex items-center gap-1.5">
               <GitBranch className="w-3.5 h-3.5 text-accentGreenBorder" />
               <span>{t.sourceBranchLabel}</span>
+              {availableBranches.length > 0 && (
+                <span className="text-[11px] text-[#8B949E]">
+                  ({availableBranches.length})
+                </span>
+              )}
             </label>
             {request.sourceMode === 'remote' && (
               <button
@@ -259,18 +269,40 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
             )}
           </div>
           {availableBranches.length > 0 ? (
-            <select
-              value={request.sourceBranch || ''}
-              onChange={(e) => updateField('sourceBranch', e.target.value)}
-              className="w-full bg-[#0D1117] border border-[#30363D] rounded-md px-3 py-2 text-xs text-[#E6EDF3] focus:border-borderFocus focus:outline-none transition-colors"
-            >
-              <option value="">{t.sourceBranchAll}</option>
-              {availableBranches.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-1.5">
+              {availableBranches.length > 10 && (
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={branchSearch}
+                    onChange={(e) => setBranchSearch(e.target.value)}
+                    placeholder={t.filterBranchesPlaceholder}
+                    className="w-full bg-[#0D1117] border border-[#30363D] rounded-md px-2.5 py-1 text-xs text-[#E6EDF3] placeholder-[#8B949E] focus:border-borderFocus focus:outline-none transition-colors"
+                  />
+                  {branchSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setBranchSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-[#8B949E] hover:text-[#E6EDF3] text-xs font-bold"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              )}
+              <select
+                value={request.sourceBranch || ''}
+                onChange={(e) => updateField('sourceBranch', e.target.value)}
+                className="w-full bg-[#0D1117] border border-[#30363D] rounded-md px-3 py-2 text-xs text-[#E6EDF3] focus:border-borderFocus focus:outline-none transition-colors"
+              >
+                <option value="">{t.sourceBranchAll}</option>
+                {filteredBranches.map((b) => (
+                  <option key={b} value={b}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : (
             <input
               type="text"
