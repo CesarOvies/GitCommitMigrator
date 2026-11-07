@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -31,6 +32,7 @@ public class MigratorForm : Form
     private readonly Font labelFont;
     private readonly Font inputFont;
     private readonly Font buttonFont;
+    private readonly Font smallFont;
     private readonly Button btnImportConfig;
     private readonly Button btnExportConfig;
     private readonly Label lblSourceRepo;
@@ -55,11 +57,16 @@ public class MigratorForm : Form
     private readonly Button btnMigrate;
     private readonly Label lblLanguage;
     private readonly ComboBox cmbLanguage;
+    private readonly Panel updateBannerPanel;
+    private readonly Label lblUpdateBanner;
+    private readonly Button btnUpdateNow;
+    private readonly Button btnDismissUpdate;
 
     private AppLanguage currentLanguage = AppLanguage.PtBr;
     private bool isProcessing;
     private bool hasActiveErrors;
     private int currentProgressPercentage;
+    private UpdateInfo? currentUpdateInfo;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
@@ -76,6 +83,7 @@ public class MigratorForm : Form
         labelFont = new Font("Segoe UI Semibold", 9F, FontStyle.Regular, GraphicsUnit.Point);
         inputFont = new Font("Segoe UI", 9.5F, FontStyle.Regular, GraphicsUnit.Point);
         buttonFont = new Font("Segoe UI Semibold", 9.75F, FontStyle.Regular, GraphicsUnit.Point);
+        smallFont = new Font("Segoe UI", 8.5F, FontStyle.Regular, GraphicsUnit.Point);
 
         using var iconStream = typeof(MigratorForm).Assembly.GetManifestResourceStream("Migrator.Assets.app.ico");
         if (iconStream is not null)
@@ -268,12 +276,78 @@ public class MigratorForm : Form
         footerBar.Controls.Add(cmbLanguage);
         panel.Controls.Add(footerBar);
 
+        updateBannerPanel = new Panel
+        {
+            Width = FieldWidth,
+            Height = 28,
+            Margin = new Padding(0, 8, 0, 0),
+            BackColor = BgInput,
+            Visible = false
+        };
+        updateBannerPanel.Paint += (s, e) =>
+        {
+            using var pen = new Pen(BorderSubtle, 1);
+            e.Graphics.DrawRectangle(pen, 0, 0, updateBannerPanel.Width - 1, updateBannerPanel.Height - 1);
+        };
+
+        lblUpdateBanner = new Label
+        {
+            Location = new Point(8, 5),
+            Width = FieldWidth - 104,
+            Height = 18,
+            Font = smallFont,
+            ForeColor = TextSecondary,
+            AutoEllipsis = true
+        };
+
+        btnUpdateNow = new Button
+        {
+            Location = new Point(FieldWidth - 94, 3),
+            Width = 68,
+            Height = 22,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = AccentGreen,
+            ForeColor = Color.White,
+            Font = smallFont,
+            Cursor = Cursors.Hand
+        };
+        btnUpdateNow.FlatAppearance.BorderSize = 1;
+        btnUpdateNow.FlatAppearance.BorderColor = AccentGreenBorder;
+        btnUpdateNow.FlatAppearance.MouseOverBackColor = AccentGreenHover;
+        btnUpdateNow.Click += (s, e) => ShowUpdateDialog();
+
+        btnDismissUpdate = new Button
+        {
+            Text = "✕",
+            Location = new Point(FieldWidth - 22, 3),
+            Width = 18,
+            Height = 22,
+            FlatStyle = FlatStyle.Flat,
+            BackColor = BgInput,
+            ForeColor = TextSecondary,
+            Font = smallFont,
+            Cursor = Cursors.Hand
+        };
+        btnDismissUpdate.FlatAppearance.BorderSize = 0;
+        btnDismissUpdate.Click += (s, e) => updateBannerPanel.Visible = false;
+
+        updateBannerPanel.Controls.Add(lblUpdateBanner);
+        updateBannerPanel.Controls.Add(btnUpdateNow);
+        updateBannerPanel.Controls.Add(btnDismissUpdate);
+        panel.Controls.Add(updateBannerPanel);
+
         Controls.Add(panel);
 
         ApplyLanguage();
 
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        _ = CheckForUpdatesOnStartupAsync();
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -294,6 +368,7 @@ public class MigratorForm : Form
             labelFont.Dispose();
             inputFont.Dispose();
             buttonFont.Dispose();
+            smallFont.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -431,6 +506,11 @@ public class MigratorForm : Form
 
         btnMigrate.Text = isProcessing ? t.ProcessingButton : t.MigrateButton;
         lblLanguage.Text = t.LanguageLabel;
+        btnUpdateNow.Text = t.UpdateNowButton;
+        if (currentUpdateInfo is not null)
+        {
+            lblUpdateBanner.Text = string.Format(t.UpdateBannerText, currentUpdateInfo.LatestVersion, currentUpdateInfo.CurrentVersion);
+        }
 
         if (hasActiveErrors)
         {
@@ -719,5 +799,37 @@ public class MigratorForm : Form
         return dialog.ShowDialog(this) == DialogResult.OK
             ? dialog.SelectedCommits
             : null;
+    }
+
+    private async Task CheckForUpdatesOnStartupAsync()
+    {
+        try
+        {
+            UpdateInfo info = await UpdateService.CheckForUpdatesAsync();
+            if (info.HasUpdate && !IsDisposed)
+            {
+                currentUpdateInfo = info;
+                UiTranslations t = LocalizationService.Get(currentLanguage);
+                lblUpdateBanner.Text = string.Format(t.UpdateBannerText, info.LatestVersion, info.CurrentVersion);
+                updateBannerPanel.Visible = true;
+
+                ShowUpdateDialog();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorLogService.LogException(ex, "CheckForUpdatesOnStartup");
+        }
+    }
+
+    private void ShowUpdateDialog()
+    {
+        if (currentUpdateInfo is null)
+        {
+            return;
+        }
+
+        using var dialog = new UpdateDialogForm(currentUpdateInfo, currentLanguage);
+        dialog.ShowDialog(this);
     }
 }
