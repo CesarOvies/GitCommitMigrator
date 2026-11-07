@@ -8,7 +8,7 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 
 ## 2. Stack e Configuração (`Migrator/Migrator.csproj`)
 
-- **TargetFramework**: `net8.0-windows` (`OutputType: Exe`, `UseWindowsForms: true`)
+- **TargetFramework**: `net8.0-windows` (`OutputType: WinExe`, `UseWindowsForms: true`)
 - **RuntimeIdentifier**: `win-x64` (`PublishSingleFile: true`, `SelfContained: true`, `PublishReadyToRun: true`)
 - **AssemblyName / PackageId**: `Git.Commit.Migrator` (`MIT`)
 - **Dependência principal**: `LibGit2Sharp` (`0.31.0`)
