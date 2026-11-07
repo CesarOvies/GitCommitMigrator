@@ -106,7 +106,16 @@ export const App: React.FC = () => {
     setIsFetchingBranches(true);
     addLog(t.fetchingBranches, 'info');
     try {
-      const branches = await fetchRemoteBranches(request.sourceRepoUrl, request.sourcePatToken, t);
+      const branches = await fetchRemoteBranches(
+        request.sourceRepoUrl,
+        request.sourcePatToken,
+        t,
+        (count) => {
+          if (count % 100 === 0) {
+            addLog(`${t.fetchingBranches} (${count}...)`, 'info');
+          }
+        }
+      );
       setAvailableBranches(branches);
       addLog(t.fetchBranchesSuccess.replace('{0}', String(branches.length)), 'success');
     } catch (err: unknown) {

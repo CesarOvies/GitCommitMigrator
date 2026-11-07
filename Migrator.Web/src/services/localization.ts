@@ -114,6 +114,7 @@ export interface Translations {
   fetchingBranches: string;
   fetchBranchesSuccess: string;
   fetchBranchesError: string;
+  filterBranchesPlaceholder: string;
   footerLicense: string;
   footerSubtitle: string;
 }
@@ -233,6 +234,7 @@ export const translations: Record<AppLanguage, Translations> = {
     fetchingBranches: "Buscando branches...",
     fetchBranchesSuccess: "{0} branch(es) carregada(s).",
     fetchBranchesError: "Não foi possível carregar as branches do repositório.",
+    filterBranchesPlaceholder: "Filtrar branches...",
     footerLicense: "Git Commit Migrator © {0} — Licença MIT",
     footerSubtitle: "Web & Desktop"
   },
@@ -350,6 +352,7 @@ export const translations: Record<AppLanguage, Translations> = {
     fetchingBranches: "Fetching branches...",
     fetchBranchesSuccess: "{0} branch(es) loaded.",
     fetchBranchesError: "Could not fetch branches from the repository.",
+    filterBranchesPlaceholder: "Filter branches...",
     footerLicense: "Git Commit Migrator © {0} — MIT License",
     footerSubtitle: "Web & Desktop"
   },
@@ -467,6 +470,7 @@ export const translations: Record<AppLanguage, Translations> = {
     fetchingBranches: "Buscando ramas...",
     fetchBranchesSuccess: "{0} rama(s) cargada(s).",
     fetchBranchesError: "No se pudieron cargar las ramas del repositorio.",
+    filterBranchesPlaceholder: "Filtrar ramas...",
     footerLicense: "Git Commit Migrator © {0} — Licencia MIT",
     footerSubtitle: "Web y Desktop"
   }
