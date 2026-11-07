@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { MigrationForm } from './components/MigrationForm';
 import { CommitModal } from './components/CommitModal';
@@ -13,13 +13,18 @@ import {
 } from './types';
 import { getTranslation } from './services/localization';
 import { validateMigrationRequest } from './services/validator';
-import { fetchRemoteCommits, pushGhostCommits } from './services/github-api';
-import { extractCommitsFromLocalDirectory } from './services/git-local';
+import { fetchRemoteCommits, fetchRemoteBranches, pushGhostCommits } from './services/github-api';
+import { extractCommitsFromLocalDirectory, listLocalBranches } from './services/git-local';
 import { ShieldCheck, Sparkles, ExternalLink } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [lang, setLang] = useState<AppLanguage>('pt-BR');
   const t = getTranslation(lang);
+
+  useEffect(() => {
+    document.title = `${t.windowTitle} Web`;
+    document.documentElement.lang = lang;
+  }, [lang, t.windowTitle]);
 
   const [request, setRequest] = useState<RunMigrationRequest>({
     sourceMode: 'remote',
@@ -35,6 +40,8 @@ export const App: React.FC = () => {
 
   const [localDirHandle, setLocalDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [localFolderName, setLocalFolderName] = useState<string>('');
+  const [availableBranches, setAvailableBranches] = useState<string[]>([]);
+  const [isFetchingBranches, setIsFetchingBranches] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState<MigrationProgress | null>(null);
@@ -57,7 +64,7 @@ export const App: React.FC = () => {
 
   const handleSelectLocalFolder = async () => {
     if (!('showDirectoryPicker' in window)) {
-      alert('Seu navegador não suporta a File System Access API. Use um navegador baseado em Chromium (Chrome, Edge, Brave) ou utilize o modo Repositório Remoto.');
+      alert(t.errFsApiUnsupported);
       return;
     }
 
@@ -68,36 +75,67 @@ export const App: React.FC = () => {
       });
       setLocalDirHandle(handle);
       setLocalFolderName(handle.name);
-      addLog(`Pasta selecionada: ${handle.name}`, 'info');
+      addLog(t.sourceLocalFolderSelected.replace('{0}', handle.name), 'info');
       // clear error if any
       setErrors((prev) => {
         const next = { ...prev };
         delete next.sourceRepoUrl;
         return next;
       });
+
+      try {
+        const branches = await listLocalBranches(handle, t);
+        setAvailableBranches(branches);
+        if (branches.length > 0) {
+          addLog(t.fetchBranchesSuccess.replace('{0}', String(branches.length)), 'info');
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        addLog(`${t.fetchBranchesError}: ${msg}`, 'warn');
+      }
     } catch {
       // User cancelled picker
     }
   };
 
+  const handleFetchRemoteBranches = async () => {
+    if (!request.sourceRepoUrl.trim()) {
+      setErrors((prev) => ({ ...prev, sourceRepoUrl: t.errSourceEmpty }));
+      return;
+    }
+    setIsFetchingBranches(true);
+    addLog(t.fetchingBranches, 'info');
+    try {
+      const branches = await fetchRemoteBranches(request.sourceRepoUrl, request.sourcePatToken, t);
+      setAvailableBranches(branches);
+      addLog(t.fetchBranchesSuccess.replace('{0}', String(branches.length)), 'success');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      addLog(`${t.fetchBranchesError}: ${msg}`, 'error');
+    } finally {
+      setIsFetchingBranches(false);
+    }
+  };
+
   const executePush = async (commits: CommitMetadata[]) => {
     try {
-      addLog(`Iniciando reconstrução de ${commits.length} ghost commits no repositório de destino...`, 'info');
+      addLog(t.logStartingReconstruction.replace('{0}', String(commits.length)), 'info');
       const result = await pushGhostCommits(
         request.targetRemoteUrl,
         request.targetPatToken,
         commits,
         request.newAuthorName,
         request.newAuthorEmail,
-        (p) => setProgress(p)
+        (p) => setProgress(p),
+        t
       );
 
-      addLog(`Sucesso! ${result.totalMigrated} commits migrados para a branch main.`, 'success');
-      addLog(`Commit SHA final: ${result.finalCommitSha}`, 'info');
+      addLog(t.logMigrationSuccess.replace('{0}', String(result.totalMigrated)), 'success');
+      addLog(t.logFinalCommitSha.replace('{0}', result.finalCommitSha), 'info');
       setSuccessUrl(result.branchUrl);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      addLog(`Erro ao enviar commits: ${msg}`, 'error');
+      addLog(t.logPushError.replace('{0}', msg), 'error');
       alert(`${t.errorMessagePrefix} ${msg}`);
     } finally {
       setIsProcessing(false);
@@ -109,47 +147,51 @@ export const App: React.FC = () => {
     const validation = validateMigrationRequest(request, lang, Boolean(localDirHandle));
     if (!validation.isValid) {
       setErrors(validation.errors);
-      addLog('Validação falhou. Verifique os campos destacados.', 'warn');
+      addLog(t.logValidationFailed, 'warn');
       return;
     }
     setErrors({});
     setIsProcessing(true);
     setProgress({ percentage: 5, statusText: t.statusExtractingCommits });
 
-    addLog('=== INÍCIO DA MIGRAÇÃO ===', 'info');
-    addLog(`Filtro de e-mail: ${request.filterOriginalEmail}`, 'info');
-    addLog(`Novo autor: ${request.newAuthorName} <${request.newAuthorEmail}>`, 'info');
+    addLog(t.statusStartMigration, 'info');
+    addLog(t.logEmailFilter.replace('{0}', request.filterOriginalEmail), 'info');
+    addLog(t.logNewAuthor.replace('{0}', request.newAuthorName).replace('{1}', request.newAuthorEmail), 'info');
 
     let extracted: CommitMetadata[] = [];
     let totalScanned = 0;
 
     try {
       if (request.sourceMode === 'local' && localDirHandle) {
-        addLog(`Lendo repositório local em: ${localDirHandle.name}...`, 'info');
+        addLog(t.logReadingLocalRepo.replace('{0}', localDirHandle.name), 'info');
         const res = await extractCommitsFromLocalDirectory(
           localDirHandle,
           request.filterOriginalEmail,
-          (count) => setProgress({ percentage: 10, statusText: `Encontrados ${count} commits...` })
+          (count) => setProgress({ percentage: 10, statusText: t.statusCommitsFoundCount.replace('{0}', String(count)) }),
+          t,
+          request.sourceBranch
         );
         extracted = res.commits;
         totalScanned = res.totalFound;
       } else {
-        addLog(`Consultando commits remotos em: ${request.sourceRepoUrl}...`, 'info');
+        addLog(t.logFetchingRemoteCommits.replace('{0}', request.sourceRepoUrl), 'info');
         const res = await fetchRemoteCommits(
           request.sourceRepoUrl,
           request.filterOriginalEmail,
           request.sourcePatToken,
-          (count) => setProgress({ percentage: 10, statusText: `Encontrados ${count} commits...` })
+          (count) => setProgress({ percentage: 10, statusText: t.statusCommitsFoundCount.replace('{0}', String(count)) }),
+          t,
+          request.sourceBranch
         );
         extracted = res.commits;
         totalScanned = res.totalFound;
       }
 
-      addLog(`Total de commits escaneados: ${totalScanned}`, 'info');
-      addLog(`Commits correspondentes ao filtro: ${extracted.length}`, 'info');
+      addLog(t.logTotalScanned.replace('{0}', String(totalScanned)), 'info');
+      addLog(t.logMatchingCommits.replace('{0}', String(extracted.length)), 'info');
 
       if (extracted.length === 0) {
-        addLog('Nenhum commit encontrado para o e-mail informado.', 'warn');
+        addLog(t.errNoCommitsSelected, 'warn');
         alert(t.errNoCommitsSelected);
         setIsProcessing(false);
         setProgress(null);
@@ -158,7 +200,7 @@ export const App: React.FC = () => {
 
       // Check advanced settings
       if (request.useAdvancedSettings) {
-        addLog('Abrindo modal de seleção avançada...', 'info');
+        addLog(t.logOpeningAdvancedModal, 'info');
         setExtractedCommits(extracted);
         setIsModalOpen(true);
         // Modal confirm will trigger executePush
@@ -169,7 +211,7 @@ export const App: React.FC = () => {
       await executePush(extracted);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      addLog(`Erro durante extração: ${msg}`, 'error');
+      addLog(t.logExtractionError.replace('{0}', msg), 'error');
       alert(`${t.errorMessagePrefix} ${msg}`);
       setIsProcessing(false);
       setProgress(null);
@@ -178,7 +220,7 @@ export const App: React.FC = () => {
 
   const handleModalConfirm = (selected: CommitMetadata[]) => {
     setIsModalOpen(false);
-    addLog(`Seleção confirmada: ${selected.length} commits escolhidos.`, 'info');
+    addLog(t.logSelectionConfirmed.replace('{0}', String(selected.length)), 'info');
     executePush(selected);
   };
 
@@ -202,17 +244,21 @@ export const App: React.FC = () => {
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-accentGreenBorder" />
               <h2 className="text-sm font-semibold text-[#E6EDF3]">
-                Preserve seu histórico e métricas com segurança
+                {t.introBannerTitle}
               </h2>
             </div>
             <p className="text-xs text-[#8B949E] leading-relaxed">
-              Recrie suas contribuições em repositórios remotos usando <strong>ghost commits</strong> (commits vazios).
-              O código-fonte nunca é transmitido.
+              {t.introBannerText.split('{0}').map((part, i, arr) => (
+                <React.Fragment key={i}>
+                  {part}
+                  {i < arr.length - 1 && <strong>ghost commits</strong>}
+                </React.Fragment>
+              ))}
             </p>
           </div>
           <div className="flex items-center gap-1.5 text-[11px] text-[#8B949E] bg-[#0D1117]/80 px-2.5 py-1 rounded-md border border-[#30363D] self-start sm:self-auto shrink-0">
             <ShieldCheck className="w-3.5 h-3.5 text-accentGreenBorder" />
-            <span>100% Client-Side</span>
+            <span>{t.clientSideBadge}</span>
           </div>
         </div>
 
@@ -225,7 +271,7 @@ export const App: React.FC = () => {
                 <span>{t.successMessage}</span>
               </div>
               <p className="text-[#8B949E]">
-                Seus commits vazios foram sincronizados na branch main do repositório destino.
+                {t.successBannerDescription}
               </p>
             </div>
             <a
@@ -234,7 +280,7 @@ export const App: React.FC = () => {
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-accentGreen hover:bg-accentGreenHover text-white text-xs font-semibold shrink-0 transition-colors"
             >
-              <span>Ver Commits</span>
+              <span>{t.viewCommitsButton}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
@@ -251,10 +297,17 @@ export const App: React.FC = () => {
           localFolderName={localFolderName}
           onSelectLocalFolder={handleSelectLocalFolder}
           hasLocalDirectoryHandle={Boolean(localDirHandle)}
+          availableBranches={availableBranches}
+          isFetchingBranches={isFetchingBranches}
+          onFetchRemoteBranches={handleFetchRemoteBranches}
         />
 
         {/* Progress Bar */}
-        <ProgressBar progress={progress} isProcessing={isProcessing} />
+        <ProgressBar
+          progress={progress}
+          isProcessing={isProcessing}
+          processingText={t.processingButton}
+        />
 
         {/* Console Event Log */}
         <EventLog logs={logs} onClear={() => setLogs([])} lang={lang} />
@@ -272,7 +325,7 @@ export const App: React.FC = () => {
       {/* Footer */}
       <footer className="border-t border-[#30363D] bg-[#161B22] py-4 px-4 text-center text-xs text-[#8B949E]">
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Git Commit Migrator &copy; {new Date().getFullYear()} — MIT License</span>
+          <span>{t.footerLicense.replace('{0}', String(new Date().getFullYear()))}</span>
           <div className="flex items-center gap-3">
             <a
               href="https://github.com/CesarOvies/GitCommitMigrator"
@@ -283,7 +336,7 @@ export const App: React.FC = () => {
               GitHub
             </a>
             <span>•</span>
-            <span className="text-[11px] text-[#8B949E]">Web &amp; Desktop</span>
+            <span className="text-[11px] text-[#8B949E]">{t.footerSubtitle}</span>
           </div>
         </div>
       </footer>
@@ -292,4 +345,3 @@ export const App: React.FC = () => {
 };
 
 export default App;
-
