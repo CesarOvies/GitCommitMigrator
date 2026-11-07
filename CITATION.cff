@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+title: "Git Commit Migrator — Ghost Commits & GitHub Contribution Graph Sync"
+message: "If you use or reference this software, please cite it using the metadata from this file."
+type: software
+authors:
+  - given-names: Cesar
+    family-names: Ovies
+    alias: CesarOvies
+repository-code: "https://github.com/CesarOvies/GitCommitMigrator"
+url: "https://cesarovies.github.io/GitCommitMigrator/"
+license: MIT
+abstract: >-
+  Dual-platform utility (100% client-side Web SPA and Windows .NET 8 Portable Desktop application)
+  that extracts Git commit metadata by author email from local or remote repositories (GitHub, GitLab,
+  Bitbucket, Azure DevOps) and reconstructs the contribution history in a personal repository using
+  empty Ghost Commits. Preserves GitHub contribution graphs (green squares), commit dates, and messages
+  without exposing proprietary source code, files, or secrets.
+keywords:
+  - git
+  - github
+  - ghost-commits
+  - empty-commits
+  - github-contribution-graph
+  - green-squares
+  - commit-migrator
+  - git-history-migration
+  - work-to-personal-github
+  - gitlab-to-github
+  - bitbucket-to-github
+  - libgit2sharp
+  - isomorphic-git
+  - privacy
+  - developer-tools
+

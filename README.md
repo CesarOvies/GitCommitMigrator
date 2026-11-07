@@ -2,23 +2,32 @@
   <img src="Migrator/Assets/logo.png" alt="Git Commit Migrator Logo" width="160" />
 </p>
 
-# Git Commit Migrator
+# Git Commit Migrator — Ghost Commits & GitHub Contribution Graph Sync
 
 <p align="center">
-  <strong>Preserve seu histórico e gráfico de contribuições do GitHub sem expor uma única linha de código proprietário.</strong>
+  <strong>Preserve seu histórico e gráfico de contribuições do GitHub (green squares) sem expor uma única linha de código proprietário.</strong><br/>
+  <em>Migrate work Git commits to your personal GitHub contribution graph using empty Ghost Commits — zero source code exposure.</em><br/>
+  <em>Migra tus commits del trabajo a tu gráfico de contribuciones personal de GitHub usando Ghost Commits vacíos — sin exponer código privado.</em>
 </p>
 
 <p align="center">
   <a href="https://cesarovies.github.io/GitCommitMigrator/"><img src="https://img.shields.io/badge/Web_App-Live_Demo-238636?logo=githubpages&logoColor=white" alt="Live Web App" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/releases"><img src="https://img.shields.io/github/v/release/CesarOvies/GitCommitMigrator?logo=github&label=Release" alt="GitHub Release" /></a>
+  <a href="https://cesarovies.github.io/GitCommitMigrator/llms.txt"><img src="https://img.shields.io/badge/AI_Context-llms.txt-388BFD?logo=openai&logoColor=white" alt="AI Context llms.txt" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/stargazers"><img src="https://img.shields.io/github/stars/CesarOvies/GitCommitMigrator?style=flat&logo=github&color=gold" alt="GitHub Stars" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/network/members"><img src="https://img.shields.io/github/forks/CesarOvies/GitCommitMigrator?style=flat&logo=github&color=blue" alt="GitHub Forks" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/issues"><img src="https://img.shields.io/github/issues/CesarOvies/GitCommitMigrator?style=flat&logo=github" alt="GitHub Issues" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/graphs/contributors"><img src="https://img.shields.io/github/contributors/CesarOvies/GitCommitMigrator?color=success" alt="Contributors" /></a>
   <img src="https://img.shields.io/badge/.NET-8.0--windows-512BD4?logo=dotnet" alt=".NET 8.0" />
-  <img src="https://img.shields.io/badge/Platform-Windows%20x64-0078D6?logo=windows" alt="Platform" />
+  <img src="https://img.shields.io/badge/Platform-Web%20%26%20Windows%20x64-0078D6?logo=windows" alt="Platform" />
   <img src="https://img.shields.io/badge/LibGit2Sharp-0.31.0-F05032?logo=git" alt="LibGit2Sharp" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
+</p>
+
+<p align="center">
+  🌐 <a href="https://cesarovies.github.io/GitCommitMigrator/"><strong>Usar Versão Web (100% Client-Side)</strong></a> •
+  💻 <a href="https://github.com/CesarOvies/GitCommitMigrator/releases"><strong>Baixar App Windows (.exe Portátil)</strong></a> •
+  🤖 <a href="https://cesarovies.github.io/GitCommitMigrator/llms.txt"><strong>llms.txt (AI / RAG Index)</strong></a>
 </p>
 
 ---
@@ -153,6 +162,23 @@ Não obrigatoriamente. O aplicativo é capaz de detectar histórico pré-existen
 <br>
 Não. A versão Portable distribuída na aba de Releases é compilada como <em>Self-Contained</em> e <em>Single-File</em> para Windows x64, trazendo todos os componentes necessários embutidos.
 </details>
+
+---
+
+## 🌎 Multilingual Overview & Search Index (SEO / AI Discovery)
+
+### 🇺🇸 English Summary — Keep Your GitHub Green Squares Without Exposing Code
+When working in corporate organizations, consultancies, or external Git providers (**GitHub Enterprise**, **GitLab**, **Bitbucket**, **Azure DevOps**), your commit history is often tied to a work email and locked inside private repositories. When you leave a company, your personal GitHub contribution graph looks empty.
+**Git Commit Migrator** extracts only commit timestamps (`When`) and commit messages authored by your work email and reconstructs **Ghost Commits** (`AllowEmptyCommit = true` / empty Git trees) in a personal repository under your personal name and verified email — **with zero source code, files, diffs, or secrets transferred**.
+
+### 🇪🇸 Resumen en Español — Conserva tu Gráfico de Contribuciones de GitHub
+Al trabajar en empresas, consultoras o repositorios privados (**GitLab**, **Bitbucket**, **Azure DevOps**, **GitHub Enterprise**), tu historial de commits queda vinculado a tu correo corporativo. Al cambiar de trabajo, tu perfil personal de GitHub no refleja tu actividad real.
+**Git Commit Migrator** extrae únicamente las fechas y mensajes de los commits filtrados por tu correo original y recrea **Ghost Commits** (commits vacíos sin código fuente ni archivos) en un repositorio personal.
+
+### 🔍 Problemas Resolvidos / Common Search Queries
+- **PT-BR**: *Como migrar commits da empresa para minha conta pessoal do GitHub sem expor código proprietário • Transferir contribuições do trabalho para GitHub pessoal • Manter quadradinhos verdes do GitHub ao sair da empresa • Sincronizar histórico de commits do GitLab / Bitbucket / Azure DevOps para o gráfico do GitHub • Criar ghost commits (commits vazios) preservando datas originais por e-mail do autor.*
+- **EN-US**: *How to transfer work GitHub contributions to personal account without code • Keep GitHub green squares after leaving a job or company • Sync corporate Git commits to personal GitHub contribution graph • Mirror GitLab, Bitbucket, or Azure DevOps commit timestamps to GitHub • Create empty ghost commits with past dates by author email.*
+- **ES**: *Cómo pasar commits del trabajo a cuenta personal de GitHub sin subir código fuente • Mantener cuadros verdes de contribuciones en GitHub al dejar una empresa • Sincronizar historial de GitLab o Bitbucket con GitHub mediante ghost commits (commits vacíos).*
 
 ---
 
