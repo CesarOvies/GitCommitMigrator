@@ -200,6 +200,11 @@ public sealed class MigrationServiceTests : IDisposable
         MigrationService.ExportConfiguration(original, configPath);
         Assert.True(File.Exists(configPath));
 
+        string rawJson = File.ReadAllText(configPath);
+        Assert.Contains("\"SourceRepoPath\":", rawJson);
+        Assert.Contains("\"TargetRemoteUrl\":", rawJson);
+        Assert.Contains("\"FilterOriginalEmail\":", rawJson);
+
         RunMigrationRequest imported = MigrationService.ImportConfiguration(configPath);
 
         Assert.Equal(original.SourceRepoPath, imported.SourceRepoPath);
@@ -210,6 +215,36 @@ public sealed class MigrationServiceTests : IDisposable
         Assert.Equal(original.NewAuthorEmail, imported.NewAuthorEmail);
         Assert.Equal(original.TargetPatToken, imported.TargetPatToken);
         Assert.Equal(original.UseAdvancedSettings, imported.UseAdvancedSettings);
+    }
+
+    [Fact]
+    public void ImportConfiguration_AcceptsCamelCaseJsonFromWeb()
+    {
+        string configPath = Path.Combine(_tempRoot, "web-config.json");
+        string camelCaseJson = """
+        {
+          "sourceRepoPath": "https://github.com/org/source.git",
+          "sourcePatToken": "ghp_source123",
+          "targetRemoteUrl": "https://github.com/org/target.git",
+          "filterOriginalEmail": "dev@legacy.com",
+          "newAuthorName": "Modern Dev",
+          "newAuthorEmail": "dev@modern.com",
+          "targetPatToken": "ghp_target456",
+          "useAdvancedSettings": true
+        }
+        """;
+        File.WriteAllText(configPath, camelCaseJson);
+
+        RunMigrationRequest imported = MigrationService.ImportConfiguration(configPath);
+
+        Assert.Equal("https://github.com/org/source.git", imported.SourceRepoPath);
+        Assert.Equal("ghp_source123", imported.SourcePatToken);
+        Assert.Equal("https://github.com/org/target.git", imported.TargetRemoteUrl);
+        Assert.Equal("dev@legacy.com", imported.FilterOriginalEmail);
+        Assert.Equal("Modern Dev", imported.NewAuthorName);
+        Assert.Equal("dev@modern.com", imported.NewAuthorEmail);
+        Assert.Equal("ghp_target456", imported.TargetPatToken);
+        Assert.True(imported.UseAdvancedSettings);
     }
 
     [Fact]

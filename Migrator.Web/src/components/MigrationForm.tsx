@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { RunMigrationRequest, AppLanguage, SourceMode } from '../types';
 import { getTranslation } from '../services/localization';
+import { exportConfiguration, importConfiguration } from '../services/config';
 
 interface MigrationFormProps {
   request: RunMigrationRequest;
@@ -54,28 +55,19 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
     updateField('sourceMode', mode);
   };
 
-  // Export configuration as JSON
+  // Export configuration as JSON matching Desktop format (PascalCase)
   const handleExportConfig = () => {
-    const configToExport = {
-      sourceRepoPath: request.sourceRepoUrl,
-      sourcePatToken: request.sourcePatToken || '',
-      targetRemoteUrl: request.targetRemoteUrl,
-      filterOriginalEmail: request.filterOriginalEmail,
-      newAuthorName: request.newAuthorName,
-      newAuthorEmail: request.newAuthorEmail,
-      targetPatToken: request.targetPatToken,
-      useAdvancedSettings: request.useAdvancedSettings
-    };
-    const blob = new Blob([JSON.stringify(configToExport, null, 2)], { type: 'application/json' });
+    const json = exportConfiguration(request);
+    const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'git_commit_migrator_config.json';
+    a.download = 'migration-config.json';
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  // Import configuration from JSON
+  // Import configuration from JSON (accepts PascalCase & camelCase)
   const handleImportConfig = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -83,17 +75,11 @@ export const MigrationForm: React.FC<MigrationFormProps> = ({
     reader.onload = (event) => {
       try {
         const text = event.target?.result as string;
-        const parsed = JSON.parse(text);
+        const imported = importConfiguration(text);
         onChange({
           ...request,
-          sourceRepoUrl: parsed.sourceRepoPath || parsed.sourceRepoUrl || '',
-          sourcePatToken: parsed.sourcePatToken || '',
-          targetRemoteUrl: parsed.targetRemoteUrl || '',
-          filterOriginalEmail: parsed.filterOriginalEmail || '',
-          newAuthorName: parsed.newAuthorName || '',
-          newAuthorEmail: parsed.newAuthorEmail || '',
-          targetPatToken: parsed.targetPatToken || '',
-          useAdvancedSettings: Boolean(parsed.useAdvancedSettings)
+          ...imported,
+          sourceMode: imported.sourceMode ?? request.sourceMode
         });
       } catch {
         alert(t.importErrorMessage);
