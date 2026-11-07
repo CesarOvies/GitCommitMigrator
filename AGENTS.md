@@ -4,16 +4,22 @@ Contexto técnico e arquitetural do **GitCommitMigrator** para leitura rápida p
 
 ## 1. Visão Geral
 
-Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) que extrai metadados de commits de um repositório Git local por e-mail do autor e reconstrói o histórico em um novo repositório usando commits vazios (*ghost commits*), fazendo push para um remoto via PAT. Objetivo: preservar métricas/gráfico de atividade sem expor código proprietário.
+Aplicação dual (Desktop Windows Forms em `.NET 8.0` e Web SPA hospedada no **GitHub Pages** em React/TypeScript/Vite) que extrai metadados de commits de um repositório Git local ou remoto por e-mail do autor e reconstrói o histórico em um novo repositório usando commits vazios (*ghost commits*), fazendo push para um remoto via PAT. Objetivo: preservar métricas/gráfico de atividade sem expor código proprietário.
 
-## 2. Stack e Configuração (`Migrator/Migrator.csproj`)
+## 2. Stack e Configuração
 
+### Desktop (`Migrator/Migrator.csproj`)
 - **TargetFramework**: `net8.0-windows` (`OutputType: WinExe`, `UseWindowsForms: true`)
 - **RuntimeIdentifier**: `win-x64` (`PublishSingleFile: true`, `SelfContained: true`, `PublishReadyToRun: true`)
 - **AssemblyName / PackageId**: `Git.Commit.Migrator` (`MIT`)
 - **Dependência principal**: `LibGit2Sharp` (`0.31.0`)
 - **Solution**: `GitCommitMigration.slnx` (inclui `Migrator` e `Migrator.Tests`)
 - **Estilo (`.editorconfig`)**: `dotnet_style_namespace_match_folder = true` (namespaces refletem a hierarquia de pastas).
+
+### Web (`Migrator.Web/`)
+- **Stack**: React 18, TypeScript 5, Vite 6, Tailwind CSS 3, `isomorphic-git` 1.27, `vitest` 5
+- **Hospedagem**: GitHub Pages (`https://cesarovies.github.io/GitCommitMigrator/`)
+- **Arquitetura**: 100% Client-Side. Extração local via File System Access API, extração remota e criação de ghost commits via GitHub REST / Git Database API (`api.github.com`). Zero backend. 100% responsiva (mobile & desktop).
 
 ## 3. Mapa de Arquivos e Responsabilidades
 
@@ -32,6 +38,12 @@ Aplicação desktop Windows Forms em `.NET 8.0` (`net8.0-windows` / `win-x64`) q
 | `Migrator/Models/UpdateInfo.cs` | `Migrator.Models.UpdateInfo` | DTO representando o resultado da verificação de release/update. |
 | `Migrator.Tests/Services/MigrationServiceTests.cs` | `Migrator.Tests.Services.MigrationServiceTests` | Testes automatizados (xUnit) validando extração, reconstrução de histórico e push E2E. |
 | `Migrator.Tests/Services/UpdateServiceTests.cs` | `Migrator.Tests.Services.UpdateServiceTests` | Testes automatizados validando parsing semântico de versões, comparador, mock HTTP e scripts. |
+| `Migrator.Web/src/App.tsx` | `Migrator.Web.App` | Componente raiz da versão Web: orquestra extração, modal de seleção, push e logs em tempo real. |
+| `Migrator.Web/src/services/github-api.ts` | `fetchRemoteCommits`, `pushGhostCommits` | Serviço Web consumindo a API REST e Git Database API do GitHub com CORS nativo. |
+| `Migrator.Web/src/services/git-local.ts` | `extractCommitsFromLocalDirectory` | Adaptador FileSystemDirectoryHandle e leitura do `.git` local via `isomorphic-git`. |
+| `Migrator.Web/src/services/localization.ts` | `translations` | Dicionário de traduções web (PT-BR, EN-US, ES). |
+| `Migrator.Web/src/services/validator.ts` | `validateMigrationRequest`, `parseGitHubUrl` | Validação de campos e URLs do repositório. |
+| `.github/workflows/deploy-pages.yml` | `Deploy Web to GitHub Pages` | Deploy contínuo do Web App para o GitHub Pages em pushes na `main`. |
 | `.github/workflows/ci.yml` | `CI & PR Policy` | Workflow do GitHub Actions que valida governança de branches em PRs (`* -> develop` e `develop -> main`), roda `dotnet test` e fecha automaticamente PRs inválidos ou quebrados. |
 | `.github/workflows/sync-develop.yml` | `Sync Develop with Main` | Faz merge automático de `main` em `develop` após qualquer push na `main`. |
 | `.github/workflows/release.yml` | `Release & Package Deploy` | Ao entrar commit na `main`, gera tag `v1.0.x`, empacota versão Portable `.zip` (`win-x64`), calcula hashes SHA-256/SHA-512, roda scan Defender + VirusTotal, gera atestado SLSA, publica no GitHub Packages e cria GitHub Release. |

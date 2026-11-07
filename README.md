@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://cesarovies.github.io/GitCommitMigrator/"><img src="https://img.shields.io/badge/Web_App-Live_Demo-238636?logo=githubpages&logoColor=white" alt="Live Web App" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/releases"><img src="https://img.shields.io/github/v/release/CesarOvies/GitCommitMigrator?logo=github&label=Release" alt="GitHub Release" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/stargazers"><img src="https://img.shields.io/github/stars/CesarOvies/GitCommitMigrator?style=flat&logo=github&color=gold" alt="GitHub Stars" /></a>
   <a href="https://github.com/CesarOvies/GitCommitMigrator/network/members"><img src="https://img.shields.io/github/forks/CesarOvies/GitCommitMigrator?style=flat&logo=github&color=blue" alt="GitHub Forks" /></a>
@@ -55,12 +56,24 @@ O **Git Commit Migrator** resolve esse problema criando **Ghost Commits** (commi
 
 ## 🚀 Como Usar (Guia Rápido)
 
-### 1. Baixar o Aplicativo
-Acesse a página de [**Releases**](https://github.com/CesarOvies/GitCommitMigrator/releases) e baixe a versão mais recente do arquivo `.zip` portátil. Não requer instalação nem SDK do .NET pré-instalado (é *Self-Contained*).
+Você pode utilizar o **Git Commit Migrator** de duas formas:
 
-### 2. Preencher os Campos
+### Opção 1: Versão Web (Recomendada — Sem Instalação & 100% Responsiva)
+Acesse diretamente pelo navegador no computador ou celular:
+👉 [**https://cesarovies.github.io/GitCommitMigrator/**](https://cesarovies.github.io/GitCommitMigrator/)
 
-Abra o `Git.Commit.Migrator.exe` e informe:
+- 📱 **Totalmente responsiva**: Funciona no celular (usando repositório remoto) e no desktop (suporta pasta local via File System API).
+- 🔒 **100% Client-Side**: O código-fonte nunca sai da sua máquina; os commits vazios são enviados diretamente para a API do GitHub pelo seu navegador.
+
+---
+
+### Opção 2: Versão Desktop Windows (.exe Portable)
+1. Acesse a página de [**Releases**](https://github.com/CesarOvies/GitCommitMigrator/releases) e baixe a versão mais recente do arquivo `.zip` portátil. Não requer instalação nem SDK do .NET pré-instalado (é *Self-Contained*).
+2. Extraia e execute `Git.Commit.Migrator.exe`.
+
+---
+
+### 📝 Preenchendo os Campos (Web ou Desktop)
 
 | Campo | Obrigatório? | Descrição | Exemplo |
 |---|:---:|---|---|

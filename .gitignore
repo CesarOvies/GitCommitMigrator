@@ -486,3 +486,8 @@ $RECYCLE.BIN/
 .context-mode/
 .codegraph/
 .claude-flow/
+
+# Web artifacts
+Migrator.Web/node_modules/
+Migrator.Web/dist/
+
