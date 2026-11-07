@@ -1,0 +1,58 @@
+# Git Commit Migrator — Full Technical & AI Discovery Reference (llms-full.txt)
+
+> Preserve your GitHub contribution graph (green squares / activity heatmap) by migrating commit metadata from corporate, private, or external Git repositories into a personal GitHub repository using empty Ghost Commits — with zero proprietary code exposure.
+
+## 1. Identity & Links
+- **Name**: Git Commit Migrator
+- **Author**: Cesar Ovies (https://github.com/CesarOvies)
+- **Live Web App (SPA)**: https://cesarovies.github.io/GitCommitMigrator/
+- **Source Repository**: https://github.com/CesarOvies/GitCommitMigrator
+- **Desktop Releases (Windows x64 Portable)**: https://github.com/CesarOvies/GitCommitMigrator/releases
+- **License**: MIT
+
+## 2. Executive Summary (PT-BR / EN-US / ES)
+
+### Português (PT-BR)
+Quando desenvolvedores trabalham em empresas, consultorias ou repositórios privados (GitHub Enterprise, GitLab, Bitbucket, Azure DevOps), todo o histórico de commits fica vinculado ao e-mail corporativo e à organização privada. Ao sair da empresa, o perfil pessoal do GitHub fica vazio. O **Git Commit Migrator** resolve isso extraindo apenas a data/hora (`When`) e mensagem dos commits filtrados pelo seu e-mail antigo e recriando **Ghost Commits** (commits vazios, sem arquivos nem código-fonte) em um repositório pessoal sob seu novo nome e e-mail pessoal.
+
+### English (EN-US)
+When software engineers work in corporate environments, consultancies, or private repositories (GitHub Enterprise, GitLab, Bitbucket, Azure DevOps), their commit history is tied to a corporate email and locked inside private orgs. When leaving a job, their personal GitHub profile does not reflect years of real engineering activity. **Git Commit Migrator** solves this by extracting commit timestamps and messages filtered by the original author email and reconstructing **Ghost Commits** (empty commits with zero files or diffs) in a personal repository under the developer's personal name and email.
+
+### Español (ES)
+Cuando los desarrolladores trabajan en empresas, consultoras o repositorios privados, su historial de commits queda atado al correo corporativo. Al cambiar de empleo, su perfil personal de GitHub parece inactivo. **Git Commit Migrator** extrae únicamente las fechas y mensajes de los commits filtrados por el correo original y reconstruye **Ghost Commits** (commits vacíos sin código fuente ni archivos) en un repositorio personal.
+
+## 3. Architecture & Step-by-Step Workflow
+
+1. **Extract Commits (`ExtractCommits` / `fetchRemoteCommits` / `extractCommitsFromLocalDirectory`)**:
+   - Scans a local `.git` folder (via `LibGit2Sharp` on Desktop or `FileSystemDirectoryHandle` + `isomorphic-git` on Web) or queries a remote GitHub repository (with pagination across all branches or a selected branch).
+   - Filters commits case-insensitively where `commit.Author.Email == filterOriginalEmail`.
+   - Orders matching commits chronologically (`OrderBy(c => c.When)`).
+2. **Optional Advanced Filtering**:
+   - Migrate all matching commits, filter by date period (`StartDate` .. `EndDate`), or select a single commit.
+3. **Reconstruct History (`ReconstructHistory` / `pushGhostCommits`)**:
+   - Initializes `MIGRATION_INFO.md` on `main` if the target repository is empty.
+   - Creates empty Git commits (`AllowEmptyCommit = true` / same tree SHA in Git Database API) signed with `newAuthorName`, `newAuthorEmail`, and the original `When` timestamp.
+4. **Idempotent Replay Push (`PushToRemote`)**:
+   - Checks existing commits on the target `main` branch.
+   - Skips already-migrated commits (matching author email, timestamp, and message) and appends only new ghost commits on top of `main` without force-pushing (`--force` is never used).
+
+## 4. Security, Privacy & Compliance Guarantees
+- **Zero Code Leak**: No source code files, blobs, directory trees, or diffs are copied into the ghost repository.
+- **100% Client-Side Web Execution**: The Web App hosted on GitHub Pages has no backend server. Personal Access Tokens (PATs) and local repository handles never leave the user's browser except to authenticate directly against `https://api.github.com`.
+- **Desktop DPAPI Protection**: The Windows `.NET 8` desktop app encrypts sensitive parameters in error logs using Windows Data Protection API (`ProtectedData.Protect` with `DataProtectionScope.CurrentUser`) and masks tokens in the UI.
+- **Supply Chain Security**: Official Windows portable releases include SHA-256/SHA-512 checksums, Microsoft Defender + VirusTotal scans, and SLSA build provenance attestations.
+
+## 5. High-Intent Search Queries Answered by This Project
+- how to migrate git commits to another repository without code
+- transfer work github contributions to personal account
+- keep github green squares after leaving company
+- create empty git commits with past dates automatically
+- sync gitlab or bitbucket commits to github contribution graph
+- rewrite git author email and export empty commits
+- como migrar commits do trabalho para github pessoal sem codigo
+- transferir contribuicoes github empresa para conta pessoal
+- preencher grafico de contribuicoes github quadradinhos verdes
+- criar ghost commits commits vazios no git
+- migrar historico git por email do autor
+- como pasar commits del trabajo a github personal sin codigo
+

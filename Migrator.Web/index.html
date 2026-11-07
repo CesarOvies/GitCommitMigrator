@@ -3,17 +3,199 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="./favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="apple-touch-icon" href="./logo.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0D1117" />
-    <meta name="description" content="Migre o histórico de commits do seu e-mail para um repositório remoto como ghost commits, preservando suas métricas sem expor código proprietário." />
-    <title>Git Commit Migrator Web</title>
+    <meta name="color-scheme" content="dark" />
+    <meta name="author" content="Cesar Ovies" />
+    <meta name="application-name" content="Git Commit Migrator" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+
+    <!-- Primary SEO Meta Tags (PT-BR / EN / ES) -->
+    <title>Git Commit Migrator — Migrar Commits e Gráfico de Contribuições do GitHub (Ghost Commits)</title>
+    <meta
+      name="description"
+      content="Migre o histórico de commits do seu e-mail corporativo para seu GitHub pessoal usando Ghost Commits (commits vazios). Preserve seu gráfico de contribuições (green squares) sem expor código proprietário. 100% Client-Side Web & Desktop."
+    />
+    <meta
+      name="keywords"
+      content="git commit migrator, ghost commits, empty commits, migrar commits github, transferir contribuições github trabalho para pessoal, manter quadradinhos verdes github, github contribution graph, keep green squares when leaving job, sync work commits to personal github without code, copiar historico git sem codigo, migrate git history by email, gitlab to github contributions, bitbucket to github contributions, azure devops to github, commits vazios, isomorphic-git, libgit2sharp, migrar commits del trabajo a github personal"
+    />
+
+    <!-- Canonical & Internationalization (hreflang) -->
+    <link rel="canonical" href="https://cesarovies.github.io/GitCommitMigrator/" />
+    <link rel="alternate" hreflang="pt-BR" href="https://cesarovies.github.io/GitCommitMigrator/" />
+    <link rel="alternate" hreflang="en-US" href="https://cesarovies.github.io/GitCommitMigrator/" />
+    <link rel="alternate" hreflang="es" href="https://cesarovies.github.io/GitCommitMigrator/" />
+    <link rel="alternate" hreflang="x-default" href="https://cesarovies.github.io/GitCommitMigrator/" />
+
+    <!-- AI / LLM Discovery Links (llmstxt.org standard) -->
+    <link rel="help" type="text/plain" href="./llms.txt" title="LLM Context Summary" />
+    <link rel="alternate" type="text/plain" href="./llms-full.txt" title="LLM Full Technical Documentation" />
+
+    <!-- Open Graph / Facebook / LinkedIn / Discord / WhatsApp -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Git Commit Migrator" />
+    <meta property="og:url" content="https://cesarovies.github.io/GitCommitMigrator/" />
+    <meta property="og:title" content="Git Commit Migrator — Ghost Commits & GitHub Contribution Graph Sync" />
+    <meta
+      property="og:description"
+      content="Preserve seu histórico e gráfico de contribuições do GitHub (green squares) criando Ghost Commits (commits vazios) por e-mail do autor — zero vazamento de código proprietário. 100% Client-Side no navegador ou Desktop Windows."
+    />
+    <meta property="og:image" content="https://cesarovies.github.io/GitCommitMigrator/logo.png" />
+    <meta property="og:image:alt" content="Git Commit Migrator Logo" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta property="og:locale:alternate" content="es_ES" />
+
+    <!-- Twitter / X Cards -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Git Commit Migrator — Ghost Commits & GitHub Contribution Graph Sync" />
+    <meta
+      name="twitter:description"
+      content="Transfer work Git commits to your personal GitHub contribution graph using empty Ghost Commits without exposing proprietary source code."
+    />
+    <meta name="twitter:image" content="https://cesarovies.github.io/GitCommitMigrator/logo.png" />
+
+    <!-- Schema.org Structured Data (JSON-LD) for Search Engines & AI Knowledge Graphs -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": ["SoftwareApplication", "WebApplication"],
+            "@id": "https://cesarovies.github.io/GitCommitMigrator/#software",
+            "name": "Git Commit Migrator",
+            "alternateName": [
+              "Git.Commit.Migrator",
+              "GitHub Ghost Commit Migrator",
+              "Migrador de Commits Git"
+            ],
+            "url": "https://cesarovies.github.io/GitCommitMigrator/",
+            "downloadUrl": "https://github.com/CesarOvies/GitCommitMigrator/releases",
+            "codeRepository": "https://github.com/CesarOvies/GitCommitMigrator",
+            "image": "https://cesarovies.github.io/GitCommitMigrator/logo.png",
+            "applicationCategory": "DeveloperApplication",
+            "applicationSubCategory": "Git Version Control & Developer Productivity Utility",
+            "operatingSystem": "Web Browser (Cross-Platform), Windows 10, Windows 11 (x64)",
+            "inLanguage": ["pt-BR", "en-US", "es"],
+            "isAccessibleForFree": true,
+            "license": "https://opensource.org/licenses/MIT",
+            "author": {
+              "@type": "Person",
+              "name": "Cesar Ovies",
+              "url": "https://github.com/CesarOvies"
+            },
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "description": "Open-source Web & Windows Desktop tool to extract Git commit metadata by author email from local or remote repositories and reconstruct empty Ghost Commits in a personal GitHub repository, preserving the contribution graph (green squares) without exposing proprietary code.",
+            "keywords": "git commit migrator, ghost commits, empty commits, github contribution graph, keep green squares when leaving job, migrar commits github sem expor codigo, transferir contribuicoes trabalho para github pessoal",
+            "featureList": [
+              "Zero source code exposure using empty Ghost Commits (AllowEmptyCommit)",
+              "100% client-side execution in the browser (File System Access API + GitHub REST/Git Database API)",
+              "Filter commits by original corporate/work author email",
+              "Filter by specific branch or scan all repository branches",
+              "Advanced commit filtering by date range (period) or single commit",
+              "Idempotent replay on top of existing main branch without force push (--force)",
+              "Configuration export and import via JSON",
+              "Multilingual interface in Portuguese (PT-BR), English (EN-US), and Spanish (ES)"
+            ]
+          },
+          {
+            "@type": "HowTo",
+            "@id": "https://cesarovies.github.io/GitCommitMigrator/#howto",
+            "name": "How to migrate work Git commits to a personal GitHub account without exposing code",
+            "description": "Step-by-step workflow to transfer commit dates and activity metrics to your personal GitHub contribution graph using empty Ghost Commits.",
+            "step": [
+              {
+                "@type": "HowToStep",
+                "position": 1,
+                "name": "Select Source Repository & Original Email",
+                "text": "Provide the remote repository URL (or select a local .git folder in your browser) and enter the original corporate/work email used to author the commits."
+              },
+              {
+                "@type": "HowToStep",
+                "position": 2,
+                "name": "Configure Personal Target Repository & New Author",
+                "text": "Enter the target GitHub repository URL, a Personal Access Token (PAT) with repo write scope, and your personal GitHub name and verified email."
+              },
+              {
+                "@type": "HowToStep",
+                "position": 3,
+                "name": "Run Ghost Commit Migration",
+                "text": "Click Run Migration (optionally filtering by date period or branch). The tool reconstructs empty Ghost Commits with original timestamps and pushes them safely without force push."
+              }
+            ]
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://cesarovies.github.io/GitCommitMigrator/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Como migrar commits da empresa para meu GitHub pessoal sem vazar código proprietário? / How do I transfer work commits to my personal GitHub without exposing proprietary code?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "O Git Commit Migrator extrai apenas os metadados de data/hora (When) e mensagem dos commits filtrados pelo seu e-mail original e cria Ghost Commits (commits vazios, sem arquivos nem diffs) em um repositório na sua conta pessoal do GitHub. Nenhum código-fonte sai da sua máquina."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "O que é um Ghost Commit (commit vazio) no Git?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Um Ghost Commit é um commit válido no Git que preserva a assinatura do autor, data/hora original e mensagem, mas aponta para uma árvore sem alterações de arquivos (AllowEmptyCommit = true). O GitHub contabiliza o commit no gráfico de contribuições (quadradinhos verdes) sem armazenar código."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Posso migrar commits de repositórios privados, GitLab, Bitbucket ou Azure DevOps?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Sim. Para repositórios remotos no GitHub você pode informar um PAT de leitura opcional. Para repositórios do GitLab, Bitbucket, Azure DevOps ou servidores internos, basta clonar o repositório localmente e selecionar a pasta .git diretamente no navegador (modo Pasta Local) ou no app Desktop para Windows."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "O Git Commit Migrator apaga o histórico existente ou usa force push?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Não. O envio é idempotente e não-destrutivo: se o repositório de destino já possuir commits na branch main, a ferramenta faz o replay apenas dos novos ghost commits sobre o topo da branch, ignorando duplicatas e sem usar --force."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body class="bg-[#0D1117] text-[#E6EDF3] antialiased min-h-screen selection:bg-brandBlue selection:text-white">
     <div id="root"></div>
+    <noscript>
+      <main style="max-width: 800px; margin: 2rem auto; padding: 1.5rem; font-family: sans-serif; color: #E6EDF3; background: #161B22; border: 1px solid #30363D; border-radius: 8px;">
+        <h1>Git Commit Migrator — Ghost Commits &amp; GitHub Contribution Graph Sync</h1>
+        <p>
+          <strong>PT-BR:</strong> Migre o histórico de commits do seu e-mail corporativo para um repositório pessoal no GitHub usando <em>Ghost Commits</em> (commits vazios), preservando seu gráfico de contribuições (quadradinhos verdes) sem expor nenhuma linha de código proprietário.
+        </p>
+        <p>
+          <strong>EN-US:</strong> Transfer and sync your work Git commit history to your personal GitHub contribution graph using empty <em>Ghost Commits</em>. Keep your green squares when leaving a job or private organization without exposing proprietary source code.
+        </p>
+        <p>
+          <strong>ES:</strong> Migra el historial de commits de tu correo corporativo a tu cuenta personal de GitHub mediante <em>Ghost Commits</em> (commits vacíos), conservando tu gráfico de contribuciones sin exponer código privado.
+        </p>
+        <p>
+          Repository &amp; Windows Desktop Download:
+          <a href="https://github.com/CesarOvies/GitCommitMigrator" style="color: #58A6FF;">https://github.com/CesarOvies/GitCommitMigrator</a>
+        </p>
+      </main>
+    </noscript>
     <script>
       window.global = window;
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-

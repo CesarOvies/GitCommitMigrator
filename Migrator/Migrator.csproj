@@ -14,11 +14,17 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>Git.Commit.Migrator</AssemblyName>
     <PackageId>Git.Commit.Migrator</PackageId>
+    <Title>Git Commit Migrator — Ghost Commits &amp; GitHub Contribution Graph Sync</Title>
     <Version>1.0.0</Version>
     <Authors>Cesar Ovies</Authors>
-    <Description>Aplicação Windows Forms (.NET 8) para migrar histórico de contribuições Git usando Ghost Commits.</Description>
+    <Company>Cesar Ovies</Company>
+    <Product>Git Commit Migrator</Product>
+    <Copyright>Copyright (c) Cesar Ovies</Copyright>
+    <Description>Aplicação Windows Forms (.NET 8) e Web para migrar histórico de contribuições Git usando Ghost Commits (commits vazios), preservando o gráfico de atividades do GitHub (green squares) sem expor código proprietário. / Migrate work Git commits to personal GitHub contribution graph using empty ghost commits without exposing proprietary source code.</Description>
+    <PackageProjectUrl>https://cesarovies.github.io/GitCommitMigrator/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/CesarOvies/GitCommitMigrator</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageTags>git;github;gitlab;bitbucket;azure-devops;commit-migrator;ghost-commits;empty-commits;contribution-graph;green-squares;activity-graph;git-history;work-to-personal;libgit2sharp;dotnet8;winforms;privacy;developer-tools;migrar-commits</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>

@@ -117,6 +117,36 @@ export interface Translations {
   filterBranchesPlaceholder: string;
   footerLicense: string;
   footerSubtitle: string;
+  metaDescription: string;
+  zeroCodeLeakBadge: string;
+  downloadDesktopBtn: string;
+  learnMoreBtn: string;
+  howItWorksTitle: string;
+  howItWorksStep1Title: string;
+  howItWorksStep1Desc: string;
+  howItWorksStep2Title: string;
+  howItWorksStep2Desc: string;
+  howItWorksStep3Title: string;
+  howItWorksStep3Desc: string;
+  useCasesTitle: string;
+  useCase1Title: string;
+  useCase1Desc: string;
+  useCase2Title: string;
+  useCase2Desc: string;
+  useCase3Title: string;
+  useCase3Desc: string;
+  faqTitle: string;
+  faqQ1: string;
+  faqA1: string;
+  faqQ2: string;
+  faqA2: string;
+  faqQ3: string;
+  faqA3: string;
+  faqQ4: string;
+  faqA4: string;
+  seoTagsTitle: string;
+  seoTagsList: string;
+  llmsLinkLabel: string;
 }
 
 export const translations: Record<AppLanguage, Translations> = {
@@ -236,7 +266,37 @@ export const translations: Record<AppLanguage, Translations> = {
     fetchBranchesError: "Não foi possível carregar as branches do repositório.",
     filterBranchesPlaceholder: "Filtrar branches...",
     footerLicense: "Git Commit Migrator © {0} — Licença MIT",
-    footerSubtitle: "Web & Desktop"
+    footerSubtitle: "Web & Desktop",
+    metaDescription: "Migre o histórico de commits do seu e-mail corporativo para seu GitHub pessoal usando Ghost Commits (commits vazios). Preserve seu gráfico de contribuições (green squares) sem expor código proprietário.",
+    zeroCodeLeakBadge: "Zero Vazamento de Código",
+    downloadDesktopBtn: "Baixar App Windows (.exe)",
+    learnMoreBtn: "Como Funciona & FAQ",
+    howItWorksTitle: "Como Funciona a Migração por Ghost Commits",
+    howItWorksStep1Title: "1. Extração por E-mail",
+    howItWorksStep1Desc: "Lê o repositório de origem (URL remota do GitHub ou pasta .git local) e filtra apenas a data/hora e mensagem dos commits assinados pelo seu e-mail corporativo ou antigo.",
+    howItWorksStep2Title: "2. Reconstrução Vazia (Ghost Commits)",
+    howItWorksStep2Desc: "Recria cada commit com árvore vazia (AllowEmptyCommit) usando seu novo nome e e-mail pessoal. Nenhum arquivo, código-fonte, diff ou segredo é copiado.",
+    howItWorksStep3Title: "3. Push Inteligente (Sem Force Push)",
+    howItWorksStep3Desc: "Sincroniza os novos commits no topo da branch main do repositório de destino, ignorando duplicatas já migradas e preservando o histórico existente.",
+    useCasesTitle: "Quando Usar o Git Commit Migrator?",
+    useCase1Title: "Saída de Empresa ou Consultoria",
+    useCase1Desc: "Mantenha seus quadradinhos verdes (gráfico de contribuições do GitHub) ativos no perfil pessoal após encerrar contratos em organizações privadas, em total conformidade com NDAs.",
+    useCase2Title: "GitLab, Bitbucket e Azure DevOps → GitHub",
+    useCase2Desc: "Unifique contribuições feitas em outros provedores Git clonando o repositório localmente e migrando os metadados pelo navegador ou app Desktop.",
+    useCase3Title: "Execução 100% Client-Side ou Desktop Portátil",
+    useCase3Desc: "Use direto no navegador (celular ou PC) sem servidor intermediário, ou baixe o executável portátil para Windows (.NET 8 + LibGit2Sharp com proteção DPAPI).",
+    faqTitle: "Perguntas Frequentes (FAQ)",
+    faqQ1: "O que é um Ghost Commit e como ele preenche o gráfico do GitHub?",
+    faqA1: "Um Ghost Commit é um commit Git legítimo que contém autor, data/hora original (When) e mensagem, mas nenhuma alteração de arquivos (tree vazia). O GitHub lê o timestamp e o e-mail verificado na sua conta para acender os quadradinhos verdes no seu perfil.",
+    faqQ2: "Existe risco de vazar código proprietário ou arquivos da empresa?",
+    faqA2: "Não. Tanto na versão Web (via Git Database API) quanto na Desktop (via LibGit2Sharp AllowEmptyCommit = true), nenhum arquivo ou diff é lido ou transmitido para o repositório de destino.",
+    faqQ3: "Como exibir contribuições de um repositório de destino privado no meu perfil?",
+    faqA3: "Você pode manter o repositório de destino como Privado no GitHub. Basta ativar a opção 'Include private contributions on my profile' nas configurações do seu perfil do GitHub.",
+    faqQ4: "Posso rodar a migração mais de uma vez no mesmo repositório?",
+    faqA4: "Sim! O migrador verifica os commits já presentes na branch main do destino e envia apenas os commits novos, sem usar force push e sem duplicar entradas.",
+    seoTagsTitle: "Tópicos e Casos de Uso Relacionados",
+    seoTagsList: "migrar commits github • ghost commits • commits vazios • transferir contribuições trabalho para conta pessoal • manter quadradinhos verdes github • github contribution graph • sync gitlab bitbucket azure devops to github • preservar histórico git sem expor código",
+    llmsLinkLabel: "Contexto para IA (llms.txt)"
   },
   'en-US': {
     windowTitle: "Git Commit Migrator",
@@ -354,7 +414,37 @@ export const translations: Record<AppLanguage, Translations> = {
     fetchBranchesError: "Could not fetch branches from the repository.",
     filterBranchesPlaceholder: "Filter branches...",
     footerLicense: "Git Commit Migrator © {0} — MIT License",
-    footerSubtitle: "Web & Desktop"
+    footerSubtitle: "Web & Desktop",
+    metaDescription: "Migrate work Git commit history to your personal GitHub contribution graph using empty Ghost Commits. Keep your green squares when leaving a company without exposing proprietary source code.",
+    zeroCodeLeakBadge: "Zero Code Exposure",
+    downloadDesktopBtn: "Download Windows App (.exe)",
+    learnMoreBtn: "How It Works & FAQ",
+    howItWorksTitle: "How Ghost Commit Migration Works",
+    howItWorksStep1Title: "1. Extract by Author Email",
+    howItWorksStep1Desc: "Scans the source repository (remote GitHub URL or local .git folder) and extracts only the timestamp and message of commits authored by your corporate or old email.",
+    howItWorksStep2Title: "2. Empty Reconstruction (Ghost Commits)",
+    howItWorksStep2Desc: "Recreates each commit with an empty file tree (AllowEmptyCommit) signed with your personal name and email. Zero files, source code, diffs, or secrets are copied.",
+    howItWorksStep3Title: "3. Smart Replay Push (No Force Push)",
+    howItWorksStep3Desc: "Appends new ghost commits on top of the target repository's main branch, automatically skipping existing duplicates and preserving prior history.",
+    useCasesTitle: "When to Use Git Commit Migrator?",
+    useCase1Title: "Leaving a Job or Consultancy",
+    useCase1Desc: "Keep your GitHub contribution graph (green squares) active on your personal profile after leaving private corporate organizations, in full compliance with NDAs.",
+    useCase2Title: "GitLab, Bitbucket & Azure DevOps → GitHub",
+    useCase2Desc: "Consolidate contributions from external Git hosts by cloning the repository locally and migrating commit metadata via browser or Desktop app.",
+    useCase3Title: "100% Client-Side Web or Portable Desktop",
+    useCase3Desc: "Run directly in your browser (mobile or desktop) with zero backend servers, or use the self-contained Windows portable executable (.NET 8 + LibGit2Sharp with DPAPI protection).",
+    faqTitle: "Frequently Asked Questions (FAQ)",
+    faqQ1: "What is a Ghost Commit and how does it fill the GitHub contribution graph?",
+    faqA1: "A Ghost Commit is a valid Git commit containing an author signature, original timestamp (When), and commit message, but an empty file tree (zero file changes). GitHub reads the timestamp and your verified email to light up the green squares on your profile.",
+    faqQ2: "Is there any risk of leaking proprietary company code or secrets?",
+    faqA2: "No. Both the Web app (via Git Database API) and Desktop app (via LibGit2Sharp AllowEmptyCommit = true) never read, stage, or transmit source files or diffs to the target repository.",
+    faqQ3: "How do I show contributions from a private target repository on my profile?",
+    faqA3: "You can keep your target ghost repository Private on GitHub. Simply enable 'Include private contributions on my profile' in your GitHub account profile settings.",
+    faqQ4: "Can I run the migration multiple times into the same target repository?",
+    faqA4: "Yes! The migrator inspects existing commits on the target main branch and only replays new commits, without force-pushing or creating duplicates.",
+    seoTagsTitle: "Related Topics & Use Cases",
+    seoTagsList: "git commit migrator • ghost commits • empty commits • transfer work commits to personal github • keep github green squares when leaving job • github contribution graph sync • gitlab bitbucket azure devops to github • preserve git history without code",
+    llmsLinkLabel: "AI Context (llms.txt)"
   },
   'es': {
     windowTitle: "Git Commit Migrator",
@@ -472,7 +562,37 @@ export const translations: Record<AppLanguage, Translations> = {
     fetchBranchesError: "No se pudieron cargar las ramas del repositorio.",
     filterBranchesPlaceholder: "Filtrar ramas...",
     footerLicense: "Git Commit Migrator © {0} — Licencia MIT",
-    footerSubtitle: "Web y Desktop"
+    footerSubtitle: "Web y Desktop",
+    metaDescription: "Migra el historial de commits de tu correo corporativo a tu cuenta personal de GitHub usando Ghost Commits (commits vacíos). Conserva tu gráfico de contribuciones sin exponer código privado.",
+    zeroCodeLeakBadge: "Cero Fuga de Código",
+    downloadDesktopBtn: "Descargar App Windows (.exe)",
+    learnMoreBtn: "Cómo Funciona y FAQ",
+    howItWorksTitle: "Cómo Funciona la Migración con Ghost Commits",
+    howItWorksStep1Title: "1. Extracción por Correo",
+    howItWorksStep1Desc: "Lee el repositorio de origen (URL remota de GitHub o carpeta .git local) y filtra solo la fecha/hora y el mensaje de los commits firmados con tu correo corporativo o anterior.",
+    howItWorksStep2Title: "2. Reconstrucción Vacía (Ghost Commits)",
+    howItWorksStep2Desc: "Recrea cada commit con un árbol vacío (AllowEmptyCommit) bajo tu nuevo nombre y correo personal. Ningún archivo, código fuente, diff ni secreto es copiado.",
+    howItWorksStep3Title: "3. Push Inteligente (Sin Force Push)",
+    howItWorksStep3Desc: "Sincroniza los nuevos commits sobre la rama main del repositorio de destino, omitiendo duplicados ya migrados y preservando el historial existente.",
+    useCasesTitle: "¿Cuándo Usar Git Commit Migrator?",
+    useCase1Title: "Cambio de Empresa o Consultoría",
+    useCase1Desc: "Mantén tus cuadros verdes (gráfico de contribuciones de GitHub) activos en tu perfil personal tras salir de organizaciones privadas, cumpliendo con acuerdos de confidencialidad (NDA).",
+    useCase2Title: "GitLab, Bitbucket y Azure DevOps → GitHub",
+    useCase2Desc: "Unifica contribuciones de otros proveedores Git clonando el repositorio localmente y migrando los metadados desde el navegador o la app de escritorio.",
+    useCase3Title: "100% Client-Side Web o Desktop Portátil",
+    useCase3Desc: "Ejecútalo directo en el navegador (móvil o PC) sin servidores intermedios, o descarga el ejecutable portátil para Windows (.NET 8 + LibGit2Sharp con protección DPAPI).",
+    faqTitle: "Preguntas Frecuentes (FAQ)",
+    faqQ1: "¿Qué es un Ghost Commit y cómo llena el gráfico de GitHub?",
+    faqA1: "Un Ghost Commit es un commit Git válido con autor, fecha/hora original (When) y mensaje, pero sin cambios de archivos (árbol vacío). GitHub lee la marca de tiempo y tu correo verificado para activar los cuadros verdes en tu perfil.",
+    faqQ2: "¿Existe riesgo de filtrar código propietario o archivos de la empresa?",
+    faqA2: "No. Tanto en la versión Web (vía Git Database API) como en Desktop (vía LibGit2Sharp AllowEmptyCommit = true), ningún archivo o diff se lee ni transmite al repositorio de destino.",
+    faqQ3: "¿Cómo mostrar contribuciones de un repositorio de destino privado en mi perfil?",
+    faqA3: "Puedes mantener el repositorio de destino como Privado en GitHub. Solo activa la opción 'Include private contributions on my profile' en la configuración de tu perfil de GitHub.",
+    faqQ4: "¿Puedo ejecutar la migración varias veces en el mismo repositorio?",
+    faqA4: "¡Sí! El migrador verifica los commits existentes en la rama main de destino y envía únicamente los nuevos, sin usar force push ni duplicar registros.",
+    seoTagsTitle: "Temas y Casos de Uso Relacionados",
+    seoTagsList: "migrar commits github • ghost commits • commits vacíos • pasar commits del trabajo a github personal • mantener cuadros verdes github • github contribution graph • sincronizar gitlab bitbucket azure devops a github • preservar historial git sin código",
+    llmsLinkLabel: "Contexto para IA (llms.txt)"
   }
 };
 

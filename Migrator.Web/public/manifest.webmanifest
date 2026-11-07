@@ -1,0 +1,26 @@
+{
+  "name": "Git Commit Migrator — Ghost Commits & GitHub Contribution Graph Sync",
+  "short_name": "GitCommitMigrator",
+  "description": "Preserve seu gráfico de contribuições do GitHub (green squares) migrando histórico de commits como ghost commits (commits vazios) sem expor código proprietário.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0D1117",
+  "theme_color": "#0D1117",
+  "lang": "pt-BR",
+  "categories": ["developer", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "./favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "./logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
